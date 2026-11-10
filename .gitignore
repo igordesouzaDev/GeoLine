@@ -9,6 +9,8 @@ venv/
 
 # VS Code
 .vscode/
+.vs/
+.__pycache__
 
 # Sistema
 .DS_Store
