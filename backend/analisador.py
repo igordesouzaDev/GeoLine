@@ -1,9 +1,62 @@
 
 class AnalisadorRetas:
+    
     """
-    Analisa a relação entre duas retas no R².
-    As retas são representadas por ponto e vetor diretor.
+    Analisa relações geométricas entre retas no R² e no R³.
+
+    As retas são representadas por um ponto pertencente à reta
+    e por um vetor diretor não nulo.
+
+    CRITÉRIOS DE CLASSIFICAÇÃO:
+
+    R²:
+    - Intersectantes: o determinante entre os vetores diretores
+      é diferente de zero. As retas possuem um único ponto comum.
+    - Paralelas: os vetores diretores são proporcionais, mas
+      as retas não possuem pontos em comum.
+    - Coincidentes: os vetores diretores são proporcionais e
+      os pontos de referência pertencem à mesma reta.
+
+    R³:
+    - Coincidentes: os vetores diretores são proporcionais e
+      os pontos de referência pertencem à mesma reta.
+    - Paralelas: os vetores diretores são proporcionais, mas
+      as retas são distintas.
+    - Intersectantes: as retas não são paralelas e são coplanares,
+      possuindo um único ponto em comum.
+    - Reversas: as retas não são paralelas e não são coplanares,
+      portanto não possuem ponto de interseção.
+
+    PERTENCIMENTO DE PONTO:
+    Um ponto pertence à reta quando o determinante entre o vetor
+    que liga o ponto de referência ao ponto analisado e o vetor
+    diretor da reta é igual a zero, considerando a tolerância.
+
+    EXEMPLOS:
+
+    R²:
+    Ponto 1 = (0, 0), direção 1 = (1, 0)
+    Ponto 2 = (0, 1), direção 2 = (1, 0)
+    Resultado: retas paralelas.
+
+    Ponto 1 = (0, 0), direção 1 = (1, 1)
+    Ponto 2 = (0, 1), direção 2 = (1, -1)
+    Resultado: retas intersectantes em (0.5, 0.5).
+
+    R³:
+    Ponto 1 = (0, 0, 0), direção 1 = (1, 0, 0)
+    Ponto 2 = (0, 1, 0), direção 2 = (0, 1, 0)
+    Resultado: retas intersectantes.
+
+    Ponto 1 = (0, 0, 0), direção 1 = (1, 0, 0)
+    Ponto 2 = (0, 1, 1), direção 2 = (0, 1, 0)
+    Resultado: retas reversas.
+
+    O analisador utiliza uma tolerância numérica de 1e-9
+    em verificações geométricas para lidar com aproximações
+    de ponto flutuante.
     """
+
     @staticmethod
     def vetores_proporcionais(v1, v2):
         
