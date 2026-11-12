@@ -1,9 +1,62 @@
 
 class AnalisadorRetas:
+    
     """
-    Analisa a relação entre duas retas no R².
-    As retas são representadas por ponto e vetor diretor.
+    Analisa relações geométricas entre retas no R² e no R³.
+
+    As retas são representadas por um ponto pertencente à reta
+    e por um vetor diretor não nulo.
+
+    CRITÉRIOS DE CLASSIFICAÇÃO:
+
+    R²:
+    - Intersectantes: o determinante entre os vetores diretores
+      é diferente de zero. As retas possuem um único ponto comum.
+    - Paralelas: os vetores diretores são proporcionais, mas
+      as retas não possuem pontos em comum.
+    - Coincidentes: os vetores diretores são proporcionais e
+      os pontos de referência pertencem à mesma reta.
+
+    R³:
+    - Coincidentes: os vetores diretores são proporcionais e
+      os pontos de referência pertencem à mesma reta.
+    - Paralelas: os vetores diretores são proporcionais, mas
+      as retas são distintas.
+    - Intersectantes: as retas não são paralelas e são coplanares,
+      possuindo um único ponto em comum.
+    - Reversas: as retas não são paralelas e não são coplanares,
+      portanto não possuem ponto de interseção.
+
+    PERTENCIMENTO DE PONTO:
+    Um ponto pertence à reta quando o determinante entre o vetor
+    que liga o ponto de referência ao ponto analisado e o vetor
+    diretor da reta é igual a zero, considerando a tolerância.
+
+    EXEMPLOS:
+
+    R²:
+    Ponto 1 = (0, 0), direção 1 = (1, 0)
+    Ponto 2 = (0, 1), direção 2 = (1, 0)
+    Resultado: retas paralelas.
+
+    Ponto 1 = (0, 0), direção 1 = (1, 1)
+    Ponto 2 = (0, 1), direção 2 = (1, -1)
+    Resultado: retas intersectantes em (0.5, 0.5).
+
+    R³:
+    Ponto 1 = (0, 0, 0), direção 1 = (1, 0, 0)
+    Ponto 2 = (0, 1, 0), direção 2 = (0, 1, 0)
+    Resultado: retas intersectantes.
+
+    Ponto 1 = (0, 0, 0), direção 1 = (1, 0, 0)
+    Ponto 2 = (0, 1, 1), direção 2 = (0, 1, 0)
+    Resultado: retas reversas.
+
+    O analisador utiliza uma tolerância numérica de 1e-9
+    em verificações geométricas para lidar com aproximações
+    de ponto flutuante.
     """
+
     @staticmethod
     def vetores_proporcionais(v1, v2):
         
@@ -159,32 +212,35 @@ class AnalisadorRetas:
     def analisar(ponto1, direcao1, ponto2, direcao2):
         tolerancia = 1e-9
 
-        # Verifica se os vetores diretores são válidos
         if all(abs(c) < tolerancia for c in direcao1):
             raise ValueError("O primeiro vetor diretor não pode ser nulo.")
 
         if all(abs(c) < tolerancia for c in direcao2):
             raise ValueError("O segundo vetor diretor não pode ser nulo.")
 
-        # Diferença entre os pontos das retas
         diferenca = (
             ponto2[0] - ponto1[0],
             ponto2[1] - ponto1[1]
         )
 
-        # Determinante dos vetores diretores
         det = AnalisadorRetas.determinante(
             direcao1, direcao2
         )
 
-        # Caso os vetores sejam paralelos
-        if abs(det) < tolerancia:
+        norma1 = (direcao1[0] ** 2 + direcao1[1] ** 2) ** 0.5
+        norma2 = (direcao2[0] ** 2 + direcao2[1] ** 2) ** 0.5
+
+        if abs(det) <= tolerancia * norma1 * norma2:
 
             det_pontos = AnalisadorRetas.determinante(
                 diferenca, direcao1
             )
 
-            if abs(det_pontos) < tolerancia:
+            norma_diferenca = (
+                diferenca[0] ** 2 + diferenca[1] ** 2
+            ) ** 0.5
+
+            if abs(det_pontos) <= tolerancia * norma_diferenca * norma1:
                 return {
                     "classificacao": "Coincidentes",
                     "intersecao": None
@@ -195,12 +251,10 @@ class AnalisadorRetas:
                 "intersecao": None
             }
 
-        # Cálculo do parâmetro t
         t = AnalisadorRetas.determinante(
             diferenca, direcao2
         ) / det
 
-        # Coordenadas do ponto de interseção
         x = ponto1[0] + t * direcao1[0]
         y = ponto1[1] + t * direcao1[1]
 
@@ -209,6 +263,7 @@ class AnalisadorRetas:
             "intersecao": (x, y)
         }
 
+    
     @staticmethod
     def ponto_pertence_reta(ponto, ponto_reta, direcao):
         tolerancia = 1e-9
@@ -226,3 +281,27 @@ class AnalisadorRetas:
         )
 
         return abs(determinante) < tolerancia
+
+    @staticmethod
+    def formatar_resultado(resultado):
+        classificacao = resultado["classificacao"]
+        intersecao = resultado["intersecao"]
+
+        if classificacao == "Intersectantes":
+            coordenadas = ", ".join(
+                f"{valor:.4f}".rstrip("0").rstrip(".")
+                for valor in intersecao
+            )
+
+            return f"As retas são intersectantes. Ponto de interseção: ({coordenadas})."
+
+        if classificacao == "Paralelas":
+            return "As retas são paralelas e não possuem ponto de interseção."
+
+        if classificacao == "Coincidentes":
+            return "As retas são coincidentes e possuem infinitos pontos em comum."
+
+        if classificacao == "Reversas":
+            return "As retas são reversas: não são paralelas e não se intersectam."
+
+        return f"Classificação das retas: {classificacao}."

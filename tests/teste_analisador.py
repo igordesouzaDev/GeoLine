@@ -207,3 +207,26 @@ def main():
         
 if __name__ == "__main__":
     main()
+
+    print("\n=== NOVOS TESTES DE INTERSEÇÃO R² ===")
+
+# Teste 1 - Retas intersectantes
+resultado1 = AnalisadorRetas.analisar(
+    (0, 0), (1, 2),
+    (2, 0), (-1, 1)
+)
+print("Teste 1:", resultado1)
+
+# Teste 2 - Retas paralelas
+resultado2 = AnalisadorRetas.analisar(
+    (0, 0), (1, 2),
+    (0, 1), (1, 2)
+)
+print("Teste 2:", resultado2)
+
+# Teste 3 - Retas coincidentes
+resultado3 = AnalisadorRetas.analisar(
+    (0, 0), (1, 2),
+    (2, 4), (2, 4)
+)
+print("Teste 3:", resultado3)
