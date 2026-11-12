@@ -159,32 +159,35 @@ class AnalisadorRetas:
     def analisar(ponto1, direcao1, ponto2, direcao2):
         tolerancia = 1e-9
 
-        # Verifica se os vetores diretores são válidos
         if all(abs(c) < tolerancia for c in direcao1):
             raise ValueError("O primeiro vetor diretor não pode ser nulo.")
 
         if all(abs(c) < tolerancia for c in direcao2):
             raise ValueError("O segundo vetor diretor não pode ser nulo.")
 
-        # Diferença entre os pontos das retas
         diferenca = (
             ponto2[0] - ponto1[0],
             ponto2[1] - ponto1[1]
         )
 
-        # Determinante dos vetores diretores
         det = AnalisadorRetas.determinante(
             direcao1, direcao2
         )
 
-        # Caso os vetores sejam paralelos
-        if abs(det) < tolerancia:
+        norma1 = (direcao1[0] ** 2 + direcao1[1] ** 2) ** 0.5
+        norma2 = (direcao2[0] ** 2 + direcao2[1] ** 2) ** 0.5
+
+        if abs(det) <= tolerancia * norma1 * norma2:
 
             det_pontos = AnalisadorRetas.determinante(
                 diferenca, direcao1
             )
 
-            if abs(det_pontos) < tolerancia:
+            norma_diferenca = (
+                diferenca[0] ** 2 + diferenca[1] ** 2
+            ) ** 0.5
+
+            if abs(det_pontos) <= tolerancia * norma_diferenca * norma1:
                 return {
                     "classificacao": "Coincidentes",
                     "intersecao": None
@@ -195,12 +198,10 @@ class AnalisadorRetas:
                 "intersecao": None
             }
 
-        # Cálculo do parâmetro t
         t = AnalisadorRetas.determinante(
             diferenca, direcao2
         ) / det
 
-        # Coordenadas do ponto de interseção
         x = ponto1[0] + t * direcao1[0]
         y = ponto1[1] + t * direcao1[1]
 
@@ -209,6 +210,7 @@ class AnalisadorRetas:
             "intersecao": (x, y)
         }
 
+    
     @staticmethod
     def ponto_pertence_reta(ponto, ponto_reta, direcao):
         tolerancia = 1e-9
@@ -226,3 +228,27 @@ class AnalisadorRetas:
         )
 
         return abs(determinante) < tolerancia
+
+    @staticmethod
+    def formatar_resultado(resultado):
+        classificacao = resultado["classificacao"]
+        intersecao = resultado["intersecao"]
+
+        if classificacao == "Intersectantes":
+            coordenadas = ", ".join(
+                f"{valor:.4f}".rstrip("0").rstrip(".")
+                for valor in intersecao
+            )
+
+            return f"As retas são intersectantes. Ponto de interseção: ({coordenadas})."
+
+        if classificacao == "Paralelas":
+            return "As retas são paralelas e não possuem ponto de interseção."
+
+        if classificacao == "Coincidentes":
+            return "As retas são coincidentes e possuem infinitos pontos em comum."
+
+        if classificacao == "Reversas":
+            return "As retas são reversas: não são paralelas e não se intersectam."
+
+        return f"Classificação das retas: {classificacao}."
