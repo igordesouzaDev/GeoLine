@@ -1,1 +1,2 @@
-matplotlib
+# Nenhuma dependência externa é necessária para o backend ou para os testes.
+# Matplotlib será necessário quando os módulos de visualização forem implementados.

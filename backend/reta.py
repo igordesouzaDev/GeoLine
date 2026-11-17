@@ -93,3 +93,6 @@ class Reta:
 
     def __repr__(self):
         return f"Reta({self.ponto_inicial!r}, {self.vetor_diretor!r})"
+
+    def __str__(self):
+        return self.equacao_vetorial()
