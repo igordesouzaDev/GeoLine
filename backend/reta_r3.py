@@ -1,25 +1,9 @@
 
-from math import atan2, degrees, isfinite, sqrt
+from math import atan2, degrees, isfinite
 from numbers import Real
 
 from backend.reta import Reta
 from backend.vetor import Vetor
-
-
-def _produto_escalar(a, b):
-    return sum(x * y for x, y in zip(a, b))
-
-
-def _produto_vetorial(a, b):
-    return (
-        a[1] * b[2] - a[2] * b[1],
-        a[2] * b[0] - a[0] * b[2],
-        a[0] * b[1] - a[1] * b[0],
-    )
-
-
-def _norma(a):
-    return sqrt(_produto_escalar(a, a))
 
 
 def _formatar_numero(valor):
@@ -181,9 +165,11 @@ class RetaR3(Reta):
             raise TypeError("ponto deve ser um objeto Vetor.")
         if ponto.dimensao != 3:
             raise ValueError("O ponto deve ter dimensão 3.")
-        ap = ponto.subtrair(self.ponto_inicial).coordenadas
-        v = self.vetor_diretor.coordenadas
-        return _norma(_produto_vetorial(ap, v)) / _norma(v)
+        deslocamento = ponto.subtrair(self.ponto_inicial)
+        return (
+            deslocamento.produto_vetorial(self.vetor_diretor).modulo()
+            / self.vetor_diretor.modulo()
+        )
 
     # ------------------------------------------------------------------
     # Relações entre retas
@@ -192,57 +178,43 @@ class RetaR3(Reta):
         """Indica se os vetores diretores são paralelos (inclui coincidentes)."""
         self._validar_reta(outra)
         self._validar_tolerancia(tolerancia)
-        u = self.vetor_diretor.coordenadas
-        v = outra.vetor_diretor.coordenadas
-        return _norma(_produto_vetorial(u, v)) <= tolerancia * _norma(u) * _norma(v)
+        produto_vetorial = self.vetor_diretor.produto_vetorial(outra.vetor_diretor)
+        limite = tolerancia * self.vetor_diretor.modulo() * outra.vetor_diretor.modulo()
+        return produto_vetorial.modulo() <= limite
 
     def eh_ortogonal(self, outra, tolerancia=1e-9):
         """Indica se os vetores diretores são ortogonais."""
         self._validar_reta(outra)
         self._validar_tolerancia(tolerancia)
-        u = self.vetor_diretor.coordenadas
-        v = outra.vetor_diretor.coordenadas
-        return abs(_produto_escalar(u, v)) <= tolerancia * _norma(u) * _norma(v)
+        produto_escalar = self.vetor_diretor.produto_escalar(outra.vetor_diretor)
+        limite = tolerancia * self.vetor_diretor.modulo() * outra.vetor_diretor.modulo()
+        return abs(produto_escalar) <= limite
 
     def angulo_com(self, outra):
         """Menor ângulo (em graus, entre 0° e 90°) entre duas retas."""
         self._validar_reta(outra)
-        u = self.vetor_diretor.coordenadas
-        v = outra.vetor_diretor.coordenadas
-        produto_vetorial = _produto_vetorial(u, v)
-        seno_relativo = _norma(produto_vetorial)
-        produto_escalar = abs(_produto_escalar(u, v))
+        produto_vetorial = self.vetor_diretor.produto_vetorial(outra.vetor_diretor)
+        seno_relativo = produto_vetorial.modulo()
+        produto_escalar = abs(self.vetor_diretor.produto_escalar(outra.vetor_diretor))
         return degrees(atan2(seno_relativo, produto_escalar))
 
     def posicao_relativa(self, outra, tolerancia=1e-9):
         """Retorna 'coincidentes', 'paralelas', 'concorrentes' ou 'reversas'."""
         self._validar_reta(outra)
-        self._validar_tolerancia(tolerancia)
+        from backend.analisador import Analisador
 
-        if self.eh_paralela(outra, tolerancia):
-            if self.ponto_pertence(outra.ponto_inicial, tolerancia):
-                return "coincidentes"
-            return "paralelas"
-
-        u = self.vetor_diretor.coordenadas
-        v = outra.vetor_diretor.coordenadas
-        w = outra.ponto_inicial.subtrair(self.ponto_inicial).coordenadas
-        normal = _produto_vetorial(u, v)
-        misto = abs(_produto_escalar(w, normal))
-        if misto <= tolerancia * max(1.0, _norma(w) * _norma(normal)):
-            return "concorrentes"
-        return "reversas"
+        return Analisador._obter_relacao(self, outra, tolerancia)
 
     def distancia_reta(self, outra, tolerancia=1e-9):
         """Distância entre duas retas (0 se concorrentes ou coincidentes)."""
         self._validar_reta(outra)
+        self._validar_tolerancia(tolerancia)
         if self.eh_paralela(outra, tolerancia):
             return self.distancia_ponto(outra.ponto_inicial)
-        u = self.vetor_diretor.coordenadas
-        v = outra.vetor_diretor.coordenadas
-        w = outra.ponto_inicial.subtrair(self.ponto_inicial).coordenadas
-        normal = _produto_vetorial(u, v)
-        return abs(_produto_escalar(w, normal)) / _norma(normal)
+
+        deslocamento = outra.ponto_inicial.subtrair(self.ponto_inicial)
+        normal = self.vetor_diretor.produto_vetorial(outra.vetor_diretor)
+        return abs(deslocamento.produto_escalar(normal)) / normal.modulo()
 
     def ponto_intersecao(self, outra, tolerancia=1e-9):
         """Retorna o ponto de interseção (Vetor) se as retas forem concorrentes.
@@ -250,15 +222,10 @@ class RetaR3(Reta):
         Retorna None quando não há um único ponto em comum
         (paralelas, coincidentes ou reversas).
         """
-        if self.posicao_relativa(outra, tolerancia) != "concorrentes":
-            return None
-        u = self.vetor_diretor.coordenadas
-        v = outra.vetor_diretor.coordenadas
-        w = outra.ponto_inicial.subtrair(self.ponto_inicial).coordenadas
-        normal = _produto_vetorial(u, v)
-        # P1 + t·u = P2 + s·v  =>  t = ((P2 - P1) × v) · (u × v) / |u × v|²
-        t = _produto_escalar(_produto_vetorial(w, v), normal) / _produto_escalar(normal, normal)
-        return self.obter_ponto(t)
+        self._validar_reta(outra)
+        from backend.analisador import Analisador
+
+        return Analisador.calcular_intersecao(self, outra, tolerancia)
 
     def __repr__(self):
         return f"RetaR3({self.ponto_inicial!r}, {self.obter_ponto(1)!r})"
