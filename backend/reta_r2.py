@@ -31,7 +31,10 @@ class RetaR2(Reta):
         a, b = self.vetor_diretor.coordenadas
 
         if a == 0:
-            return f"X = {x_inicial}"
+            return f"x = {x_inicial}"
+
+        elif b == 0:
+            return f"y = {y_inicial}"
         
         m = b / a
 
@@ -51,7 +54,7 @@ class RetaR2(Reta):
             return f"x = {x_inicial}"
 
         elif b == 0:
-            return f"Y = {y_inicial}"
+            return f"y = {y_inicial}"
 
         if form == 0:
             return (
