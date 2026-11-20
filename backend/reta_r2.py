@@ -1,6 +1,10 @@
-from .reta import Reta
-from .vetor import Vetor
-from sympy import Eq, pretty, symbols
+from backend.reta import Reta
+from backend.vetor import Vetor
+
+
+def _formatar_numero(valor):
+    return f"{valor:g}"
+
 
 class RetaR2(Reta):
 
@@ -25,27 +29,36 @@ class RetaR2(Reta):
     def ponto_final(self):
         return self.ponto_inicial.somar(self.vetor_diretor)
     
-    @property
     def equacao_reduzida(self):
+        """Retorna a forma reduzida; para retas verticais, retorna x = constante."""
         x_inicial, y_inicial = self.ponto_inicial.coordenadas
         a, b = self.vetor_diretor.coordenadas
 
         if a == 0:
-            return f"x = {x_inicial}"
+            return f"x = {_formatar_numero(x_inicial)}"
 
         elif b == 0:
-            return f"y = {y_inicial}"
+            return f"y = {_formatar_numero(y_inicial)}"
         
         m = b / a
 
         coeficiente_linear = y_inicial - m * x_inicial
+        if coeficiente_linear == 0:
+            return f"y = {_formatar_numero(m)}x"
+        sinal = "+" if coeficiente_linear > 0 else "-"
+        return (
+            f"y = {_formatar_numero(m)}x {sinal} "
+            f"{_formatar_numero(abs(coeficiente_linear))}"
+        )
 
-        return f"y = {m}x{coeficiente_linear:+}" # o modificador ":+" insere o sinal do número (+ ou -)
+    def equacao_simetrica(self, form=1):
+        """Retorna a equação simétrica sem depender de bibliotecas externas.
 
-    def equacao_simetrica(self, form = 1):
-
-        if form not in (0,1):
-            raise ValueError("Form deve ser 0 ou 1.")
+        ``form`` é mantido por compatibilidade com os exemplos existentes:
+        0 produz uma forma mais explícita e 1 uma forma compacta.
+        """
+        if form not in (0, 1):
+            raise ValueError("form deve ser 0 ou 1.")
         
         x_inicial, y_inicial = self.ponto_inicial.coordenadas
         a, b = self.vetor_diretor.coordenadas
@@ -61,14 +74,5 @@ class RetaR2(Reta):
                 f"(x - ({x_inicial})) / ({a}) = "
                 f"(y - ({y_inicial})) / ({b})"
             )
-        
-        else:
-            x, y = symbols("x y")
 
-            equacao = Eq(
-                (x - x_inicial) / a,
-                (y - y_inicial) / b
-            )
-            return(
-                pretty(equacao)
-            )
+        return f"(x - {x_inicial}) / {a} = (y - {y_inicial}) / {b}"

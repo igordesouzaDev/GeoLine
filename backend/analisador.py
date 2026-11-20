@@ -1,307 +1,145 @@
+"""Análise das relações geométricas entre retas do R² e do R³."""
 
-class AnalisadorRetas:
-    
-    """
-    Analisa relações geométricas entre retas no R² e no R³.
+from math import isfinite
+from numbers import Real
 
-    As retas são representadas por um ponto pertencente à reta
-    e por um vetor diretor não nulo.
+from backend.reta import Reta
 
-    CRITÉRIOS DE CLASSIFICAÇÃO:
 
-    R²:
-    - Intersectantes: o determinante entre os vetores diretores
-      é diferente de zero. As retas possuem um único ponto comum.
-    - Paralelas: os vetores diretores são proporcionais, mas
-      as retas não possuem pontos em comum.
-    - Coincidentes: os vetores diretores são proporcionais e
-      os pontos de referência pertencem à mesma reta.
+class Analisador:
+    """Classifica e calcula interseções entre retas do mesmo espaço."""
 
-    R³:
-    - Coincidentes: os vetores diretores são proporcionais e
-      os pontos de referência pertencem à mesma reta.
-    - Paralelas: os vetores diretores são proporcionais, mas
-      as retas são distintas.
-    - Intersectantes: as retas não são paralelas e são coplanares,
-      possuindo um único ponto em comum.
-    - Reversas: as retas não são paralelas e não são coplanares,
-      portanto não possuem ponto de interseção.
-
-    PERTENCIMENTO DE PONTO:
-    Um ponto pertence à reta quando o determinante entre o vetor
-    que liga o ponto de referência ao ponto analisado e o vetor
-    diretor da reta é igual a zero, considerando a tolerância.
-
-    EXEMPLOS:
-
-    R²:
-    Ponto 1 = (0, 0), direção 1 = (1, 0)
-    Ponto 2 = (0, 1), direção 2 = (1, 0)
-    Resultado: retas paralelas.
-
-    Ponto 1 = (0, 0), direção 1 = (1, 1)
-    Ponto 2 = (0, 1), direção 2 = (1, -1)
-    Resultado: retas intersectantes em (0.5, 0.5).
-
-    R³:
-    Ponto 1 = (0, 0, 0), direção 1 = (1, 0, 0)
-    Ponto 2 = (0, 1, 0), direção 2 = (0, 1, 0)
-    Resultado: retas intersectantes.
-
-    Ponto 1 = (0, 0, 0), direção 1 = (1, 0, 0)
-    Ponto 2 = (0, 1, 1), direção 2 = (0, 1, 0)
-    Resultado: retas reversas.
-
-    O analisador utiliza uma tolerância numérica de 1e-9
-    em verificações geométricas para lidar com aproximações
-    de ponto flutuante.
-    """
+    TOLERANCIA = 1e-9
 
     @staticmethod
-    def vetores_proporcionais(v1, v2):
-        
-        tolerancia = 1e-9
+    def _validar_tolerancia(tolerancia):
+        if isinstance(tolerancia, bool) or not isinstance(tolerancia, Real):
+            raise TypeError("A tolerância deve ser um número real não negativo.")
+        if not isfinite(tolerancia) or tolerancia < 0:
+            raise ValueError("A tolerância deve ser finita e não negativa.")
 
-        if len(v1) != len(v2):
-            raise ValueError("Os vetores devem ter a mesma dimensão.")
+    @staticmethod
+    def _validar_retas(reta1, reta2):
+        if not isinstance(reta1, Reta) or not isinstance(reta2, Reta):
+            raise TypeError("Os argumentos devem ser objetos Reta ou classes derivadas.")
+        if reta1.dimensao != reta2.dimensao:
+            raise ValueError("As retas devem pertencer ao mesmo espaço.")
 
-        if all(abs(c) < tolerancia for c in v1):
-            raise ValueError("O primeiro vetor não pode ser nulo.")
+    @staticmethod
+    def verificar_paralelismo(reta1, reta2, tolerancia=TOLERANCIA):
+        """Verifica se os vetores diretores são paralelos."""
+        Analisador._validar_retas(reta1, reta2)
+        Analisador._validar_tolerancia(tolerancia)
 
-        if all(abs(c) < tolerancia for c in v2):
-            raise ValueError("O segundo vetor não pode ser nulo.")
+        if reta1.dimensao == 2:
+            a1, b1 = reta1.vetor_diretor.coordenadas
+            a2, b2 = reta2.vetor_diretor.coordenadas
+            determinante = a1 * b2 - b1 * a2
+            limite = tolerancia * reta1.vetor_diretor.modulo() * reta2.vetor_diretor.modulo()
+            return abs(determinante) <= limite
 
-        indice = next(
-            i for i in range(len(v2))
-            if abs(v2[i]) >= tolerancia
-        )
+        produto_vetorial = reta1.vetor_diretor.produto_vetorial(reta2.vetor_diretor)
+        limite = tolerancia * reta1.vetor_diretor.modulo() * reta2.vetor_diretor.modulo()
+        return produto_vetorial.modulo() <= limite
 
-        proporcao = v1[indice] / v2[indice]
-
-        return all(
-            abs(v1[i] - proporcao * v2[i]) < tolerancia
-            for i in range(len(v1))
+    @staticmethod
+    def verificar_coincidencia(reta1, reta2, tolerancia=TOLERANCIA):
+        """Verifica se as retas paralelas compartilham os mesmos pontos."""
+        Analisador._validar_retas(reta1, reta2)
+        Analisador._validar_tolerancia(tolerancia)
+        return (
+            Analisador.verificar_paralelismo(reta1, reta2, tolerancia)
+            and reta1.ponto_pertence(reta2.ponto_inicial, tolerancia)
         )
 
     @staticmethod
-    def analisar_paralelismo_r3(ponto1, direcao1, ponto2, direcao2):
-        tolerancia = 1e-9
+    def _obter_relacao(reta1, reta2, tolerancia=TOLERANCIA):
+        Analisador._validar_retas(reta1, reta2)
+        Analisador._validar_tolerancia(tolerancia)
 
-        if len(ponto1) != 3 or len(ponto2) != 3:
-            raise ValueError("Os pontos devem pertencer ao R³.")
+        if Analisador.verificar_paralelismo(reta1, reta2, tolerancia):
+            if Analisador.verificar_coincidencia(reta1, reta2, tolerancia):
+                return "coincidentes"
+            return "paralelas"
 
-        if len(direcao1) != 3 or len(direcao2) != 3:
-            raise ValueError("Os vetores diretores devem pertencer ao R³.")
+        if reta1.dimensao == 2:
+            return "concorrentes"
 
-        if all(abs(c) < tolerancia for c in direcao1):
-            raise ValueError("O primeiro vetor diretor não pode ser nulo.")
-
-        if all(abs(c) < tolerancia for c in direcao2):
-            raise ValueError("O segundo vetor diretor não pode ser nulo.")
-
-        proporcionais = AnalisadorRetas.vetores_proporcionais(
-            direcao1, direcao2
-        )
-
-        if not proporcionais:
-            return "Não paralelas"
-
-        diferenca = (
-            ponto2[0] - ponto1[0],
-            ponto2[1] - ponto1[1],
-            ponto2[2] - ponto1[2]
-        )
-
-        produto_vetorial = (
-            diferenca[1] * direcao1[2] - diferenca[2] * direcao1[1],
-            diferenca[2] * direcao1[0] - diferenca[0] * direcao1[2],
-            diferenca[0] * direcao1[1] - diferenca[1] * direcao1[0]
-        )
-
-        if all(abs(c) < tolerancia for c in produto_vetorial):
-            return "Coincidentes"
-
-        return "Paralelas"
+        deslocamento = reta2.ponto_inicial.subtrair(reta1.ponto_inicial)
+        normal = reta1.vetor_diretor.produto_vetorial(reta2.vetor_diretor)
+        produto_misto = abs(deslocamento.produto_escalar(normal))
+        limite = tolerancia * max(1.0, deslocamento.modulo() * normal.modulo())
+        return "concorrentes" if produto_misto <= limite else "reversas"
 
     @staticmethod
-    def calcular_intersecao_r3(ponto1, direcao1, ponto2, direcao2):
-        tolerancia = 1e-9
+    def verificar_reversas(reta1, reta2, tolerancia=TOLERANCIA):
+        """Retorna True se as retas não paralelas do R³ não são coplanares."""
+        Analisador._validar_retas(reta1, reta2)
+        Analisador._validar_tolerancia(tolerancia)
+        if reta1.dimensao != 3:
+            return False
+        return Analisador._obter_relacao(reta1, reta2, tolerancia) == "reversas"
 
-        if len(ponto1) != 3 or len(ponto2) != 3:
-            raise ValueError("Os pontos devem pertencer ao R³.")
+    @staticmethod
+    def calcular_intersecao(reta1, reta2, tolerancia=TOLERANCIA):
+        """Calcula o ponto único de interseção, ou retorna None."""
+        Analisador._validar_retas(reta1, reta2)
+        Analisador._validar_tolerancia(tolerancia)
+        if Analisador._obter_relacao(reta1, reta2, tolerancia) != "concorrentes":
+            return None
 
-        if len(direcao1) != 3 or len(direcao2) != 3:
-            raise ValueError("Os vetores diretores devem pertencer ao R³.")
+        deslocamento = reta2.ponto_inicial.subtrair(reta1.ponto_inicial)
+        direcao1 = reta1.vetor_diretor
+        direcao2 = reta2.vetor_diretor
 
-        if all(abs(c) < tolerancia for c in direcao1):
-            raise ValueError("O primeiro vetor diretor não pode ser nulo.")
-
-        if all(abs(c) < tolerancia for c in direcao2):
-            raise ValueError("O segundo vetor diretor não pode ser nulo.")
-
-        diferenca = (
-            ponto2[0] - ponto1[0],
-            ponto2[1] - ponto1[1],
-            ponto2[2] - ponto1[2]
-        )
-
-        # Produto vetorial dos vetores diretores
-        cruzado = (
-            direcao1[1] * direcao2[2] - direcao1[2] * direcao2[1],
-            direcao1[2] * direcao2[0] - direcao1[0] * direcao2[2],
-            direcao1[0] * direcao2[1] - direcao1[1] * direcao2[0]
-        )
-
-        # Determina se as retas são paralelas
-        if all(abs(c) < tolerancia for c in cruzado):
-            classificacao = AnalisadorRetas.analisar_paralelismo_r3(
-                ponto1, direcao1, ponto2, direcao2
+        if reta1.dimensao == 2:
+            a1, b1 = direcao1.coordenadas
+            a2, b2 = direcao2.coordenadas
+            dx, dy = deslocamento.coordenadas
+            determinante = a1 * b2 - b1 * a2
+            parametro = (dx * b2 - dy * a2) / determinante
+        else:
+            normal = direcao1.produto_vetorial(direcao2)
+            parametro = (
+                deslocamento.produto_vetorial(direcao2).produto_escalar(normal)
+                / normal.produto_escalar(normal)
             )
 
-            return {
-                "classificacao": classificacao,
-                "intersecao": None
-            }
+        return reta1.obter_ponto(parametro)
 
-        # Produto misto para verificar se as retas são coplanares
-        produto_misto = (
-            diferenca[0] * cruzado[0]
-            + diferenca[1] * cruzado[1]
-            + diferenca[2] * cruzado[2]
+    @staticmethod
+    def analisar(reta1, reta2, tolerancia=TOLERANCIA):
+        """Retorna relação, ponto único de interseção, indicadores e mensagem."""
+        relacao = Analisador._obter_relacao(reta1, reta2, tolerancia)
+        ponto = (
+            Analisador.calcular_intersecao(reta1, reta2, tolerancia)
+            if relacao == "concorrentes"
+            else None
         )
+        sao_coincidentes = relacao == "coincidentes"
+        sao_paralelas = relacao in {"paralelas", "coincidentes"}
+        sao_reversas = relacao == "reversas"
 
-        if abs(produto_misto) >= tolerancia:
-            return {
-                "classificacao": "Reversas",
-                "intersecao": None
-            }
-
-        # Calcula o parâmetro da primeira reta
-        numerador = (
-            diferenca[1] * direcao2[2] - diferenca[2] * direcao2[1],
-            diferenca[2] * direcao2[0] - diferenca[0] * direcao2[2],
-            diferenca[0] * direcao2[1] - diferenca[1] * direcao2[0]
-        )
-
-        t = (
-            numerador[0] * cruzado[0]
-            + numerador[1] * cruzado[1]
-            + numerador[2] * cruzado[2]
-        ) / (
-            cruzado[0] ** 2
-            + cruzado[1] ** 2
-            + cruzado[2] ** 2
-        )
-
-        intersecao = (
-            ponto1[0] + t * direcao1[0],
-            ponto1[1] + t * direcao1[1],
-            ponto1[2] + t * direcao1[2]
-        )
+        if ponto is not None:
+            coordenadas = ", ".join(f"{valor:g}" for valor in ponto.coordenadas)
+            mensagem = f"As retas se intersectam no ponto ({coordenadas})."
+        elif sao_coincidentes:
+            mensagem = "As retas são coincidentes."
+        elif sao_paralelas:
+            mensagem = "As retas são paralelas e distintas."
+        else:
+            mensagem = "As retas são reversas no R³."
 
         return {
-            "classificacao": "Intersectantes",
-            "intersecao": intersecao
+            "relacao": relacao,
+            "ponto_intersecao": ponto,
+            "sao_paralelas": sao_paralelas,
+            "sao_coincidentes": sao_coincidentes,
+            "sao_reversas": sao_reversas,
+            "mensagem": mensagem,
         }
-    
-    @staticmethod
-    def determinante(v1, v2):
-        return v1[0] * v2[1] - v1[1] * v2[0]
-
-    @staticmethod
-    def analisar(ponto1, direcao1, ponto2, direcao2):
-        tolerancia = 1e-9
-
-        if all(abs(c) < tolerancia for c in direcao1):
-            raise ValueError("O primeiro vetor diretor não pode ser nulo.")
-
-        if all(abs(c) < tolerancia for c in direcao2):
-            raise ValueError("O segundo vetor diretor não pode ser nulo.")
-
-        diferenca = (
-            ponto2[0] - ponto1[0],
-            ponto2[1] - ponto1[1]
-        )
-
-        det = AnalisadorRetas.determinante(
-            direcao1, direcao2
-        )
-
-        norma1 = (direcao1[0] ** 2 + direcao1[1] ** 2) ** 0.5
-        norma2 = (direcao2[0] ** 2 + direcao2[1] ** 2) ** 0.5
-
-        if abs(det) <= tolerancia * norma1 * norma2:
-
-            det_pontos = AnalisadorRetas.determinante(
-                diferenca, direcao1
-            )
-
-            norma_diferenca = (
-                diferenca[0] ** 2 + diferenca[1] ** 2
-            ) ** 0.5
-
-            if abs(det_pontos) <= tolerancia * norma_diferenca * norma1:
-                return {
-                    "classificacao": "Coincidentes",
-                    "intersecao": None
-                }
-
-            return {
-                "classificacao": "Paralelas",
-                "intersecao": None
-            }
-
-        t = AnalisadorRetas.determinante(
-            diferenca, direcao2
-        ) / det
-
-        x = ponto1[0] + t * direcao1[0]
-        y = ponto1[1] + t * direcao1[1]
-
-        return {
-            "classificacao": "Intersectantes",
-            "intersecao": (x, y)
-        }
-
-    
-    @staticmethod
-    def ponto_pertence_reta(ponto, ponto_reta, direcao):
-        tolerancia = 1e-9
-
-        if all(abs(c) < tolerancia for c in direcao):
-            raise ValueError("O vetor diretor não pode ser nulo.")
-
-        diferenca = (
-            ponto[0] - ponto_reta[0],
-            ponto[1] - ponto_reta[1]
-        )
-
-        determinante = AnalisadorRetas.determinante(
-            diferenca, direcao
-        )
-
-        return abs(determinante) < tolerancia
 
     @staticmethod
     def formatar_resultado(resultado):
-        classificacao = resultado["classificacao"]
-        intersecao = resultado["intersecao"]
-
-        if classificacao == "Intersectantes":
-            coordenadas = ", ".join(
-                f"{valor:.4f}".rstrip("0").rstrip(".")
-                for valor in intersecao
-            )
-
-            return f"As retas são intersectantes. Ponto de interseção: ({coordenadas})."
-
-        if classificacao == "Paralelas":
-            return "As retas são paralelas e não possuem ponto de interseção."
-
-        if classificacao == "Coincidentes":
-            return "As retas são coincidentes e possuem infinitos pontos em comum."
-
-        if classificacao == "Reversas":
-            return "As retas são reversas: não são paralelas e não se intersectam."
-
-        return f"Classificação das retas: {classificacao}."
+        """Formata o resumo de um dicionário retornado por analisar()."""
+        return resultado["mensagem"]

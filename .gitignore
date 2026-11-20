@@ -9,6 +9,7 @@ venv/
 
 # VS Code
 .vscode/
+.env
 
 # Sistema
 .DS_Store
