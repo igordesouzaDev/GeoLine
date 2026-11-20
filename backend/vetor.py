@@ -37,9 +37,9 @@ class Vetor:
 
     def _validar_outro(self, outro):
         if not isinstance(outro, Vetor):
-            raise TypeError("A operação exige outro objeto Vetor.")
+            raise TypeError("O outro vetor deve ser um objeto Vetor.")
         if self.dimensao != outro.dimensao:
-            raise ValueError("Os vetores devem ter a mesma dimensão.")
+            raise ValueError("Os vetores devem possuir a mesma dimensão.")
 
     @staticmethod
     def _validar_escalar(valor):
@@ -65,7 +65,7 @@ class Vetor:
 
     def produto_escalar(self, outro):
         self._validar_outro(outro)
-        return sum(a * b for a, b in zip(self.coordenadas, outro.coordenadas))
+        return float(sum(a * b for a, b in zip(self.coordenadas, outro.coordenadas)))
 
     def produto_vetorial(self, outro):
         self._validar_outro(outro)
@@ -80,7 +80,7 @@ class Vetor:
     def sao_proporcionais(self, outro, tolerancia=1e-9):
         self._validar_outro(outro)
         if isinstance(tolerancia, bool) or not isinstance(tolerancia, Real):
-            raise TypeError("A tolerância deve ser um número real não negativo.")
+            raise TypeError("A tolerância deve ser um número real.")
         if not isfinite(tolerancia) or tolerancia < 0:
             raise ValueError("A tolerância deve ser finita e não negativa.")
 

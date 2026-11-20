@@ -34,38 +34,38 @@ def coords(vetor):
 class TestEquacoes(unittest.TestCase):
     def test_sem_componentes_nulas(self):
         r = R(V(1, 2, 3), V(2, 3, 4))
-        self.assertEqual(r.equacao_simetrica(), "(x - 1)/2 = (y - 2)/3 = (z - 3)/4")
+        self.assertEqual(r.equacao_simetrica(), "(x - 1.0)/2.0 = (y - 2.0)/3.0 = (z - 3.0)/4.0")
         self.assertIsInstance(r.equacao_vetorial(), str)
         self.assertIsInstance(r.equacao_parametrica(), str)
 
     def test_uma_componente_nula(self):
         r = R(V(1, 2, 3), V(2, 0, 4))
-        self.assertEqual(r.equacao_simetrica(), "(x - 1)/2 = (z - 3)/4, y = 2")
+        self.assertEqual(r.equacao_simetrica(), "(x - 1.0)/2.0 = (z - 3.0)/4.0, y = 2.0")
 
     def test_duas_componentes_nulas(self):
         r = R(V(1, 2, 3), V(0, 0, 5))
-        self.assertEqual(r.equacao_simetrica(), "(z - 3)/5, x = 1, y = 2")
+        self.assertEqual(r.equacao_simetrica(), "(z - 3.0)/5.0, x = 1.0, y = 2.0")
 
     def test_duas_componentes_nulas_outros_eixos(self):
         self.assertEqual(
-            R(V(1, 2, 3), V(4, 0, 0)).equacao_simetrica(), "(x - 1)/4, y = 2, z = 3"
+            R(V(1, 2, 3), V(4, 0, 0)).equacao_simetrica(), "(x - 1.0)/4.0, y = 2.0, z = 3.0"
         )
         self.assertEqual(
-            R(V(1, 2, 3), V(0, 4, 0)).equacao_simetrica(), "(y - 2)/4, x = 1, z = 3"
+            R(V(1, 2, 3), V(0, 4, 0)).equacao_simetrica(), "(y - 2.0)/4.0, x = 1.0, z = 3.0"
         )
 
     def test_sinal_negativo_no_ponto_inicial(self):
         r = R(V(1, -2, 3), V(2, 3, 4))
-        self.assertEqual(r.equacao_simetrica(), "(x - 1)/2 = (y + 2)/3 = (z - 3)/4")
+        self.assertEqual(r.equacao_simetrica(), "(x - 1.0)/2.0 = (y + 2.0)/3.0 = (z - 3.0)/4.0")
         self.assertNotIn("- -", r.equacao_simetrica())
 
     def test_ponto_inicial_com_zero(self):
         r = R(V(0, 0, 0), V(1, 2, 3))
-        self.assertEqual(r.equacao_simetrica(), "x/1 = y/2 = z/3")
+        self.assertEqual(r.equacao_simetrica(), "x/1.0 = y/2.0 = z/3.0")
 
     def test_componente_negativa_no_vetor_diretor(self):
         r = R(V(1, 2, 3), V(-2, 3, 4))
-        self.assertEqual(r.equacao_simetrica(), "(x - 1)/-2 = (y - 2)/3 = (z - 3)/4")
+        self.assertEqual(r.equacao_simetrica(), "(x - 1.0)/-2.0 = (y - 2.0)/3.0 = (z - 3.0)/4.0")
 
     def test_construtor_por_dois_pontos_do_contrato(self):
         r = RetaR3(V(1, 2, 3), V(3, 2, 7))

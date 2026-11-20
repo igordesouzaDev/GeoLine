@@ -1,25 +1,21 @@
 from backend.reta import Reta
+from backend.formatacao import formatar_numero, formatar_numerador
 from backend.vetor import Vetor
-
-
-def _formatar_numero(valor):
-    return f"{valor:g}"
 
 
 class RetaR2(Reta):
 
     __slots__ = ()
 
-    
     def __init__(self, ponto_inicial, ponto_final):
         if not isinstance(ponto_inicial, Vetor):
-            ponto_inicial = Vetor(ponto_inicial)
-
+            raise TypeError("O ponto inicial deve ser um objeto Vetor.")
         if not isinstance(ponto_final, Vetor):
-            ponto_final = Vetor(ponto_final)
-
-        if ponto_inicial.dimensao != 2 or ponto_final.dimensao != 2:
-            raise ValueError("A dimensão deve ser 2 para Reta em R².")
+            raise TypeError("O ponto final deve ser um objeto Vetor.")
+        if ponto_inicial.dimensao != ponto_final.dimensao:
+            raise ValueError("Os pontos devem possuir a mesma dimensão.")
+        if ponto_inicial.dimensao != 2:
+            raise ValueError("Os pontos da RetaR2 devem possuir dimensão 2.")
 
         vetor_diretor = ponto_final.subtrair(ponto_inicial)
 
@@ -35,20 +31,20 @@ class RetaR2(Reta):
         a, b = self.vetor_diretor.coordenadas
 
         if a == 0:
-            return f"x = {_formatar_numero(x_inicial)}"
+            return f"x = {formatar_numero(x_inicial)}"
 
         elif b == 0:
-            return f"y = {_formatar_numero(y_inicial)}"
+            return f"y = {formatar_numero(y_inicial)}"
         
         m = b / a
 
         coeficiente_linear = y_inicial - m * x_inicial
         if coeficiente_linear == 0:
-            return f"y = {_formatar_numero(m)}x"
+            return f"y = {formatar_numero(m)}x"
         sinal = "+" if coeficiente_linear > 0 else "-"
         return (
-            f"y = {_formatar_numero(m)}x {sinal} "
-            f"{_formatar_numero(abs(coeficiente_linear))}"
+            f"y = {formatar_numero(m)}x {sinal} "
+            f"{formatar_numero(abs(coeficiente_linear))}"
         )
 
     def equacao_simetrica(self, form=1):
@@ -58,21 +54,24 @@ class RetaR2(Reta):
         0 produz uma forma mais explícita e 1 uma forma compacta.
         """
         if form not in (0, 1):
-            raise ValueError("form deve ser 0 ou 1.")
-        
+            raise ValueError("O formato deve ser 0 ou 1.")
+
         x_inicial, y_inicial = self.ponto_inicial.coordenadas
         a, b = self.vetor_diretor.coordenadas
 
         if a == 0:
-            return f"x = {x_inicial}"
+            return f"x = {formatar_numero(x_inicial)}"
 
         elif b == 0:
-            return f"y = {y_inicial}"
+            return f"y = {formatar_numero(y_inicial)}"
 
         if form == 0:
             return (
-                f"(x - ({x_inicial})) / ({a}) = "
-                f"(y - ({y_inicial})) / ({b})"
+                f"{formatar_numerador('x', x_inicial)} / ({formatar_numero(a)}) = "
+                f"{formatar_numerador('y', y_inicial)} / ({formatar_numero(b)})"
             )
 
-        return f"(x - {x_inicial}) / {a} = (y - {y_inicial}) / {b}"
+        return (
+            f"{formatar_numerador('x', x_inicial)} / {formatar_numero(a)} = "
+            f"{formatar_numerador('y', y_inicial)} / {formatar_numero(b)}"
+        )

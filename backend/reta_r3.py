@@ -2,24 +2,9 @@
 from math import atan2, degrees, isfinite
 from numbers import Real
 
+from backend.formatacao import formatar_numero, formatar_numerador
 from backend.reta import Reta
 from backend.vetor import Vetor
-
-
-def _formatar_numero(valor):
-    """Mostra 2.0 como 2, mantendo frações como 0.5."""
-    if isinstance(valor, float) and valor.is_integer():
-        return str(int(valor))
-    return str(valor)
-
-
-def _formatar_numerador(simbolo, ponto):
-    """Formata (simbolo - ponto) com sinal limpo: x, (x - 1) ou (x + 2)."""
-    if ponto == 0:
-        return simbolo
-    if ponto > 0:
-        return f"({simbolo} - {_formatar_numero(ponto)})"
-    return f"({simbolo} + {_formatar_numero(-ponto)})"
 
 
 class RetaR3(Reta):
@@ -89,10 +74,14 @@ class RetaR3(Reta):
 
     def __init__(self, ponto_inicial, ponto_final):
         """Cria a reta por dois pontos distintos do R³, conforme o contrato."""
-        if not isinstance(ponto_inicial, Vetor) or not isinstance(ponto_final, Vetor):
-            raise TypeError("Os pontos devem ser objetos Vetor.")
-        if ponto_inicial.dimensao != 3 or ponto_final.dimensao != 3:
-            raise ValueError("RetaR3 exige dois pontos com dimensão 3.")
+        if not isinstance(ponto_inicial, Vetor):
+            raise TypeError("O ponto inicial deve ser um objeto Vetor.")
+        if not isinstance(ponto_final, Vetor):
+            raise TypeError("O ponto final deve ser um objeto Vetor.")
+        if ponto_inicial.dimensao != ponto_final.dimensao:
+            raise ValueError("Os pontos devem possuir a mesma dimensão.")
+        if ponto_inicial.dimensao != 3:
+            raise ValueError("Os pontos da RetaR3 devem possuir dimensão 3.")
         vetor_diretor = ponto_final.subtrair(ponto_inicial)
         super().__init__(ponto_inicial, vetor_diretor)
 
@@ -102,19 +91,27 @@ class RetaR3(Reta):
     @classmethod
     def por_dois_pontos(cls, ponto_a, ponto_b):
         """Cria a reta que passa por dois pontos distintos do R³."""
-        if not isinstance(ponto_a, Vetor) or not isinstance(ponto_b, Vetor):
-            raise TypeError("Os pontos devem ser objetos Vetor.")
+        if not isinstance(ponto_a, Vetor):
+            raise TypeError("O ponto inicial deve ser um objeto Vetor.")
+        if not isinstance(ponto_b, Vetor):
+            raise TypeError("O ponto final deve ser um objeto Vetor.")
         if ponto_a.dimensao != ponto_b.dimensao:
-            raise ValueError("Os pontos devem ter a mesma dimensão.")
+            raise ValueError("Os pontos devem possuir a mesma dimensão.")
+        if ponto_a.dimensao != 3:
+            raise ValueError("Os pontos da RetaR3 devem possuir dimensão 3.")
         return cls(ponto_a, ponto_b)
 
     @classmethod
     def por_ponto_e_direcao(cls, ponto_inicial, vetor_diretor):
         """Cria a reta a partir de um ponto e um vetor diretor não nulo."""
-        if not isinstance(ponto_inicial, Vetor) or not isinstance(vetor_diretor, Vetor):
-            raise TypeError("O ponto e o vetor diretor devem ser objetos Vetor.")
+        if not isinstance(ponto_inicial, Vetor):
+            raise TypeError("O ponto inicial deve ser um objeto Vetor.")
+        if not isinstance(vetor_diretor, Vetor):
+            raise TypeError("O vetor diretor deve ser um objeto Vetor.")
+        if ponto_inicial.dimensao != vetor_diretor.dimensao:
+            raise ValueError("O ponto inicial e o vetor diretor devem possuir a mesma dimensão.")
         if ponto_inicial.dimensao != 3 or vetor_diretor.dimensao != 3:
-            raise ValueError("RetaR3 exige ponto e vetor diretor com dimensão 3.")
+            raise ValueError("O ponto e o vetor diretor da RetaR3 devem possuir dimensão 3.")
         instancia = cls.__new__(cls)
         Reta.__init__(instancia, ponto_inicial, vetor_diretor)
         return instancia
@@ -125,14 +122,14 @@ class RetaR3(Reta):
     @staticmethod
     def _validar_tolerancia(tolerancia):
         if isinstance(tolerancia, bool) or not isinstance(tolerancia, Real):
-            raise TypeError("A tolerância deve ser um número real não negativo.")
+            raise TypeError("A tolerância deve ser um número real.")
         if not isfinite(tolerancia) or tolerancia < 0:
             raise ValueError("A tolerância deve ser finita e não negativa.")
 
     @staticmethod
     def _validar_reta(outra):
         if not isinstance(outra, RetaR3):
-            raise TypeError("O argumento deve ser um objeto RetaR3.")
+            raise TypeError("A outra reta deve ser um objeto RetaR3.")
 
     # ------------------------------------------------------------------
     # Equações
@@ -146,10 +143,10 @@ class RetaR3(Reta):
             simbolos, self.ponto_inicial.coordenadas, self.vetor_diretor.coordenadas
         ):
             if d == 0:
-                fixas.append(f"{simbolo} = {_formatar_numero(p)}")
+                fixas.append(f"{simbolo} = {formatar_numero(p)}")
             else:
-                numerador = _formatar_numerador(simbolo, p)
-                fracoes.append(f"{numerador}/{_formatar_numero(d)}")
+                numerador = formatar_numerador(simbolo, p)
+                fracoes.append(f"{numerador}/{formatar_numero(d)}")
         partes = []
         if fracoes:
             partes.append(" = ".join(fracoes))
@@ -162,9 +159,9 @@ class RetaR3(Reta):
     def distancia_ponto(self, ponto):
         """Distância de um ponto do R³ à reta: |AP × v| / |v|."""
         if not isinstance(ponto, Vetor):
-            raise TypeError("ponto deve ser um objeto Vetor.")
+            raise TypeError("O ponto deve ser um objeto Vetor.")
         if ponto.dimensao != 3:
-            raise ValueError("O ponto deve ter dimensão 3.")
+            raise ValueError("O ponto deve possuir a mesma dimensão da reta.")
         deslocamento = ponto.subtrair(self.ponto_inicial)
         return (
             deslocamento.produto_vetorial(self.vetor_diretor).modulo()

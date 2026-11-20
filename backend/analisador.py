@@ -14,16 +14,16 @@ class Analisador:
     @staticmethod
     def _validar_tolerancia(tolerancia):
         if isinstance(tolerancia, bool) or not isinstance(tolerancia, Real):
-            raise TypeError("A tolerância deve ser um número real não negativo.")
+            raise TypeError("A tolerância deve ser um número real.")
         if not isfinite(tolerancia) or tolerancia < 0:
             raise ValueError("A tolerância deve ser finita e não negativa.")
 
     @staticmethod
     def _validar_retas(reta1, reta2):
         if not isinstance(reta1, Reta) or not isinstance(reta2, Reta):
-            raise TypeError("Os argumentos devem ser objetos Reta ou classes derivadas.")
+            raise TypeError("As retas devem ser objetos Reta ou classes derivadas.")
         if reta1.dimensao != reta2.dimensao:
-            raise ValueError("As retas devem pertencer ao mesmo espaço.")
+            raise ValueError("As retas devem possuir a mesma dimensão.")
 
     @staticmethod
     def verificar_paralelismo(reta1, reta2, tolerancia=TOLERANCIA):
