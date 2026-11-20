@@ -3,6 +3,7 @@
 from math import isfinite
 from numbers import Real
 
+from backend.formatacao import formatar_numero
 from backend.vetor import Vetor
 
 
@@ -13,11 +14,11 @@ class Reta:
 
     def __init__(self, ponto_inicial, vetor_diretor):
         if not isinstance(ponto_inicial, Vetor):
-            raise TypeError("ponto_inicial deve ser um objeto Vetor.")
+            raise TypeError("O ponto inicial deve ser um objeto Vetor.")
         if not isinstance(vetor_diretor, Vetor):
-            raise TypeError("vetor_diretor deve ser um objeto Vetor.")
+            raise TypeError("O vetor diretor deve ser um objeto Vetor.")
         if ponto_inicial.dimensao != vetor_diretor.dimensao:
-            raise ValueError("O ponto inicial e o vetor diretor devem ter a mesma dimensão.")
+            raise ValueError("O ponto inicial e o vetor diretor devem possuir a mesma dimensão.")
         if vetor_diretor.modulo() == 0:
             raise ValueError("O vetor diretor não pode ser nulo.")
 
@@ -40,9 +41,9 @@ class Reta:
     @staticmethod
     def _validar_t(t):
         if isinstance(t, bool) or not isinstance(t, Real):
-            raise TypeError("t deve ser um número real.")
+            raise TypeError("O parâmetro t deve ser um número real.")
         if not isfinite(t):
-            raise ValueError("t deve ser finito.")
+            raise ValueError("O parâmetro t deve ser finito.")
 
     def obter_ponto(self, t):
         """Retorna P(t) = P₀ + t·v como um novo Vetor."""
@@ -52,11 +53,11 @@ class Reta:
     def ponto_pertence(self, ponto, tolerancia=1e-9):
         """Indica se um Vetor pertence à reta, dentro da tolerância dada."""
         if not isinstance(ponto, Vetor):
-            raise TypeError("ponto deve ser um objeto Vetor.")
+            raise TypeError("O ponto deve ser um objeto Vetor.")
         if ponto.dimensao != self.dimensao:
-            raise ValueError("O ponto deve ter a mesma dimensão da reta.")
+            raise ValueError("O ponto deve possuir a mesma dimensão da reta.")
         if isinstance(tolerancia, bool) or not isinstance(tolerancia, Real):
-            raise TypeError("A tolerância deve ser um número real não negativo.")
+            raise TypeError("A tolerância deve ser um número real.")
         if not isfinite(tolerancia) or tolerancia < 0:
             raise ValueError("A tolerância deve ser finita e não negativa.")
 
@@ -77,19 +78,23 @@ class Reta:
         """Retorna a equação vetorial em forma textual."""
         simbolos = ("x", "y", "z")[:self.dimensao]
         variaveis = ", ".join(simbolos)
-        ponto = ", ".join(map(str, self.ponto_inicial.coordenadas))
-        direcao = ", ".join(map(str, self.vetor_diretor.coordenadas))
+        ponto = ", ".join(formatar_numero(valor) for valor in self.ponto_inicial.coordenadas)
+        direcao = ", ".join(formatar_numero(valor) for valor in self.vetor_diretor.coordenadas)
         return f"({variaveis}) = ({ponto}) + t({direcao})"
 
     def equacao_parametrica(self):
         """Retorna as equações paramétricas em linhas separadas."""
         simbolos = ("x", "y", "z")[:self.dimensao]
-        return "\n".join(
-            f"{simbolo} = {coordenada} + {direcao}t"
-            for simbolo, coordenada, direcao in zip(
-                simbolos, self.ponto_inicial.coordenadas, self.vetor_diretor.coordenadas
-            )
-        )
+        equacoes = []
+        for simbolo, coordenada, direcao in zip(
+            simbolos, self.ponto_inicial.coordenadas, self.vetor_diretor.coordenadas
+        ):
+            if direcao < 0:
+                operacao = f"- {formatar_numero(abs(direcao))}t"
+            else:
+                operacao = f"+ {formatar_numero(direcao)}t"
+            equacoes.append(f"{simbolo} = {formatar_numero(coordenada)} {operacao}")
+        return "\n".join(equacoes)
 
     def __repr__(self):
         return f"Reta({self.ponto_inicial!r}, {self.vetor_diretor!r})"

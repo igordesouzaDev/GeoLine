@@ -15,11 +15,11 @@ class TestReta(unittest.TestCase):
     def test_equacoes_e_pertencimento(self):
         reta = Reta(Vetor([1, 2, 3]), Vetor([3, 4, 5]))
         self.assertEqual(
-            reta.equacao_vetorial(), "(x, y, z) = (1, 2, 3) + t(3, 4, 5)"
+            reta.equacao_vetorial(), "(x, y, z) = (1.0, 2.0, 3.0) + t(3.0, 4.0, 5.0)"
         )
         self.assertEqual(
             reta.equacao_parametrica(),
-            "x = 1 + 3t\ny = 2 + 4t\nz = 3 + 5t",
+            "x = 1.0 + 3.0t\ny = 2.0 + 4.0t\nz = 3.0 + 5.0t",
         )
         self.assertTrue(reta.ponto_pertence(Vetor([4, 6, 8])))
         self.assertFalse(reta.ponto_pertence(Vetor([4, 6, 9])))
