@@ -26,6 +26,7 @@ python -m unittest discover -s tests -v
 Menus e exemplos manuais ficam fora de `tests/`, para não serem confundidos com a suíte automatizada. Execute a partir da raiz:
 
 ```bash
+python executar_menu.py
 python -m scripts.interativo_vetor
 python -m scripts.exemplo_reta_r2
 python -m scripts.interativo_analisador_r2
@@ -45,8 +46,10 @@ GeoLine/
 │   └── analisador.py
 ├── tests/                 # testes automatizados do backend
 ├── scripts/               # exemplos e menus interativos
+│   └── menu_terminal.py   # menu integrado para testar o backend
 ├── interface/             # em desenvolvimento independente
 ├── visualizacao/          # gráficos em desenvolvimento independente
+├── executar_menu.py       # execução do menu pelo terminal
 ├── main.py                # ponto de entrada inicial
 ├── requirements.txt
 ├── .gitignore
