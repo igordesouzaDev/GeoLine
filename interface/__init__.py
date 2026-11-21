@@ -1,5 +1,12 @@
 import tkinter as tk
 from tkinter import ttk
+import sys
+from pathlib import Path
+
+caminho_raiz = Path(__file__).resolve().parent.parent
+sys.path.append(str(caminho_raiz))
+
+from visualizacao import Grafico
 
 class Interface:
     def __init__(self):
@@ -11,6 +18,9 @@ class Interface:
 
         self.cor_principal = "RoyalBlue4"
         self.cor_secundaria = "DodgerBlue2"
+
+        self.grafico_frame = tk.Frame(self.root)
+        self.grafico = Grafico(tk, self.grafico_frame)
 
     def menu_principal(self, frame_anterior=None):
         if frame_anterior:
@@ -73,7 +83,7 @@ class Interface:
         self.ponto_final_x = tk.Entry(self.ponto_final_entry_frame, relief="flat", font=("Aria", 16), border=0).pack(side="left", ipady=15, ipadx=230, padx=(30, 0))
         self.ponto_final_y = tk.Entry(self.ponto_final_entry_frame, relief="flat", font=("Aria", 16), border=0).pack(side="left", ipady=15, ipadx=175, padx=(10, 0))
 
-        tk.Button(self.bottomFrame, text="Calcular", font=("Arial", 18, "bold"), relief="flat", background=self.cor_secundaria, foreground="white", cursor="hand2", padx=600).pack(pady=(100, 0))
+        tk.Button(self.bottomFrame, text="Calcular", command=lambda: self.grafico.grafico_r2([100, 200], [250, 400], self.menu_reta_r2_frame), font=("Arial", 18, "bold"), relief="flat", background=self.cor_secundaria, foreground="white", cursor="hand2", padx=600).pack(pady=(100, 0))
 
 if __name__ == "__main__":
     interface = Interface();
