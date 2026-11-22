@@ -1,5 +1,6 @@
 """Janela principal e telas do GeoLine."""
 
+from math import cos, pi, sin
 import tkinter as tk
 from tkinter import messagebox, ttk
 
@@ -9,6 +10,215 @@ from backend.reta_r3 import RetaR3
 from backend.vetor import Vetor
 
 
+class BotaoArredondado(tk.Canvas):
+    """Botão desenhado em Canvas, com foco por teclado e comando preservado."""
+
+    CORES = {
+        "principal": ("#2878D0", "#1F65B5", "#19599F", "white", "#2878D0"),
+        "secundario": ("#FFFFFF", "#EDF3FA", "#E1EAF5", "#243247", "#DCE3EC"),
+        "cabecalho": ("#172B4D", "#254064", "#10213D", "white", "#385477"),
+    }
+
+    def __init__(self, master, texto, comando, tipo="principal", largura=320, altura=46):
+        self._comando = comando
+        self._tipo = tipo
+        self._largura_inicial = largura
+        self._altura = altura
+        self._habilitado = True
+        self._pressionado = False
+        self._focado = False
+        self._paleta = self.CORES[tipo]
+        try:
+            cor_fundo = master.cget("background")
+        except tk.TclError:
+            cor_fundo = "#F3F5F8"
+        super().__init__(
+            master,
+            width=largura,
+            height=altura,
+            bg=cor_fundo,
+            highlightthickness=0,
+            borderwidth=0,
+            takefocus=True,
+            cursor="hand2",
+        )
+        self._texto = texto
+        self.bind("<Configure>", self._desenhar)
+        self.bind("<Enter>", self._ao_entrar)
+        self.bind("<Leave>", self._ao_sair)
+        self.bind("<ButtonPress-1>", self._ao_pressionar)
+        self.bind("<ButtonRelease-1>", self._ao_soltar)
+        self.bind("<FocusIn>", self._ao_receber_foco)
+        self.bind("<FocusOut>", self._ao_perder_foco)
+        self.bind("<Return>", self._ao_ativar_teclado)
+        self.bind("<space>", self._ao_ativar_teclado)
+        self._desenhar()
+
+    def _cor_atual(self):
+        if not self._habilitado:
+            return "#A9B4C3"
+        if self._pressionado:
+            return self._paleta[2]
+        if getattr(self, "_sobre", False):
+            return self._paleta[1]
+        return self._paleta[0]
+
+    def _desenhar(self, _evento=None):
+        self.delete("all")
+        largura = max(1, self.winfo_width())
+        altura = max(1, self.winfo_height())
+        if largura == 1:
+            largura = self._largura_inicial
+        if altura == 1:
+            altura = self._altura
+        raio = min(12, altura / 2, largura / 2)
+        coordenadas = []
+        cantos = (
+            (largura - raio, raio, -pi / 2),
+            (largura - raio, altura - raio, 0),
+            (raio, altura - raio, pi / 2),
+            (raio, raio, pi),
+        )
+        for centro_x, centro_y, angulo_inicial in cantos:
+            for passo in range(7):
+                angulo = angulo_inicial + (pi / 2) * passo / 6
+                coordenadas.extend((centro_x + raio * cos(angulo), centro_y + raio * sin(angulo)))
+        self.create_polygon(
+            coordenadas,
+            fill=self._cor_atual(),
+            outline="#FFFFFF" if self._focado and self._tipo != "secundario" else self._paleta[4],
+            width=2 if self._focado else 1,
+        )
+        self.create_text(
+            largura / 2,
+            altura / 2,
+            text=self._texto,
+            fill=self._paleta[3] if self._habilitado else "#F5F7FA",
+            font=("Segoe UI", 10, "bold"),
+        )
+
+    def _ao_entrar(self, _evento):
+        self._sobre = True
+        self._desenhar()
+
+    def _ao_sair(self, _evento):
+        self._sobre = False
+        self._pressionado = False
+        self._desenhar()
+
+    def _ao_pressionar(self, _evento):
+        if self._habilitado:
+            self.focus_set()
+            self._pressionado = True
+            self._desenhar()
+
+    def _ao_soltar(self, evento):
+        ativar = self._pressionado and self._habilitado
+        dentro = 0 <= evento.x <= self.winfo_width() and 0 <= evento.y <= self.winfo_height()
+        self._pressionado = False
+        self._desenhar()
+        if ativar and dentro:
+            self._comando()
+
+    def _ao_receber_foco(self, _evento):
+        self._focado = True
+        self._desenhar()
+
+    def _ao_perder_foco(self, _evento):
+        self._focado = False
+        self._desenhar()
+
+    def _ao_ativar_teclado(self, _evento):
+        if self._habilitado:
+            self._pressionado = True
+            self._desenhar()
+            self.after(90, self._soltar_teclado)
+
+    def _soltar_teclado(self):
+        self._pressionado = False
+        self._desenhar()
+        if self._habilitado:
+            self._comando()
+
+    def definir_habilitado(self, habilitado):
+        self._habilitado = bool(habilitado)
+        self.configure(cursor="hand2" if self._habilitado else "arrow")
+        self._desenhar()
+
+
+class CartaoArredondado(tk.Frame):
+    """Painel branco com cantos arredondados e área interna para widgets."""
+
+    def __init__(self, master, titulo=None, padding=12, cor_fundo="#F3F5F8"):
+        super().__init__(master, bg=cor_fundo, borderwidth=0, highlightthickness=0)
+        self._titulo = titulo
+        self._padding = padding
+        self._cor_borda = "#DCE3EC"
+        self._topo = 31 if titulo else padding
+        self.canvas = tk.Canvas(
+            self, bg=cor_fundo, highlightthickness=0, borderwidth=0,
+            width=320, height=92,
+        )
+        self.canvas.pack(fill="both", expand=True)
+        self.conteudo = tk.Frame(self.canvas, bg="#FFFFFF", borderwidth=0)
+        self._janela = self.canvas.create_window(
+            (padding, self._topo), window=self.conteudo, anchor="nw"
+        )
+        self.canvas.bind("<Configure>", self._ao_redimensionar)
+        self.conteudo.bind("<Configure>", self._ao_conteudo_alterar)
+        self.after_idle(self._ajustar_altura)
+
+    def columnconfigure(self, *args, **kwargs):
+        return self.conteudo.columnconfigure(*args, **kwargs)
+
+    def rowconfigure(self, *args, **kwargs):
+        return self.conteudo.rowconfigure(*args, **kwargs)
+
+    def _pontos_arredondados(self, largura, altura, raio):
+        pontos = []
+        cantos = (
+            (largura - raio, raio, -pi / 2),
+            (largura - raio, altura - raio, 0),
+            (raio, altura - raio, pi / 2),
+            (raio, raio, pi),
+        )
+        for centro_x, centro_y, angulo_inicial in cantos:
+            for passo in range(7):
+                angulo = angulo_inicial + (pi / 2) * passo / 6
+                pontos.extend((centro_x + raio * cos(angulo), centro_y + raio * sin(angulo)))
+        return pontos
+
+    def _desenhar_fundo(self, largura, altura):
+        self.canvas.delete("decoracao")
+        raio = min(12, altura / 2, largura / 2)
+        self.canvas.create_polygon(
+            self._pontos_arredondados(largura - 1, altura - 1, raio),
+            fill="#FFFFFF", outline=self._cor_borda, width=1, tags="decoracao",
+        )
+        self.canvas.tag_lower("decoracao")
+        if self._titulo:
+            self.canvas.create_text(
+                self._padding + 2, 17, text=self._titulo,
+                anchor="w", fill="#172B4D", font=("Segoe UI", 10, "bold"),
+                tags="decoracao",
+            )
+
+    def _ao_redimensionar(self, evento):
+        largura = max(1, evento.width - 2 * self._padding)
+        self.canvas.itemconfigure(self._janela, width=largura)
+        self._desenhar_fundo(max(1, evento.width), max(1, evento.height))
+
+    def _ao_conteudo_alterar(self, _evento=None):
+        self.after_idle(self._ajustar_altura)
+
+    def _ajustar_altura(self):
+        if not self.winfo_exists():
+            return
+        altura = max(64, self.conteudo.winfo_reqheight() + self._topo + self._padding)
+        if int(float(self.canvas.cget("height"))) != altura:
+            self.canvas.configure(height=altura)
+
+
 class JanelaPrincipal:
     """Gerencia a navegação e conecta as telas às classes do backend."""
 
@@ -16,6 +226,9 @@ class JanelaPrincipal:
     AZUL = "#2878D0"
     FUNDO = "#F3F5F8"
     TEXTO = "#243247"
+    TEXTO_SECUNDARIO = "#64748B"
+    BORDA = "#DCE3EC"
+    BRANCO = "#FFFFFF"
 
     def __init__(self, root=None):
         self.root = root or tk.Tk()
@@ -25,18 +238,32 @@ class JanelaPrincipal:
         self.root.configure(bg=self.FUNDO)
         self.estilo = ttk.Style(self.root)
         self.estilo.theme_use("clam")
-        self.estilo.configure("TButton", font=("Segoe UI", 11, "bold"), padding=(12, 10))
-        self.estilo.configure("Principal.TButton", background=self.AZUL, foreground="white")
-        self.estilo.map("Principal.TButton", background=[("active", "#1D5FA8")])
+        self.estilo.configure("TButton", font=("Segoe UI", 10), padding=(10, 7))
+        self.estilo.configure("Principal.TButton", background=self.AZUL, foreground=self.BRANCO,
+                              font=("Segoe UI", 10, "bold"), padding=(12, 9), borderwidth=0)
+        self.estilo.map("Principal.TButton", background=[("pressed", "#19599F"),
+                                                          ("active", "#1F65B5")],
+                        foreground=[("disabled", "#EDF2F7")])
+        self.estilo.configure("TEntry", fieldbackground=self.BRANCO, foreground=self.TEXTO,
+                              padding=(9, 7), bordercolor=self.BORDA, lightcolor=self.BORDA,
+                              darkcolor=self.BORDA)
+        self.estilo.map("TEntry", bordercolor=[("focus", self.AZUL)],
+                        lightcolor=[("focus", self.AZUL)], darkcolor=[("focus", self.AZUL)])
         self.estilo.configure("TLabel", background=self.FUNDO, foreground=self.TEXTO,
                               font=("Segoe UI", 10))
         self.estilo.configure("Titulo.TLabel", background=self.AZUL_ESCURO,
                               foreground="white", font=("Segoe UI", 17, "bold"))
         self.estilo.configure("Subtitulo.TLabel", background=self.AZUL_ESCURO,
                               foreground="white", font=("Segoe UI", 10))
-        self.estilo.configure("TLabelframe", background=self.FUNDO, foreground=self.AZUL_ESCURO)
-        self.estilo.configure("TLabelframe.Label", background=self.FUNDO,
+        self.estilo.configure("TFrame", background=self.FUNDO)
+        self.estilo.configure("TLabelframe", background=self.BRANCO, foreground=self.AZUL_ESCURO,
+                              bordercolor=self.BORDA, relief="solid")
+        self.estilo.configure("TLabelframe.Label", background=self.BRANCO,
                               foreground=self.AZUL_ESCURO, font=("Segoe UI", 10, "bold"))
+        self.estilo.configure("Card.TLabel", background=self.BRANCO, foreground=self.TEXTO,
+                              font=("Segoe UI", 10))
+        self.estilo.configure("TRadiobutton", background=self.FUNDO, foreground=self.TEXTO,
+                              font=("Segoe UI", 10))
         self.tela_atual = None
         self.campos = {}
         self.resultado = None
@@ -63,10 +290,8 @@ class JanelaPrincipal:
         cabecalho = tk.Frame(self.tela_atual, bg=self.AZUL_ESCURO, padx=24, pady=18)
         cabecalho.pack(fill="x")
         if voltar:
-            tk.Button(cabecalho, text="← Menu", command=self.criar_menu,
-                      bg=self.AZUL_ESCURO, fg="white", activebackground=self.AZUL,
-                      activeforeground="white", relief="flat", font=("Segoe UI", 10, "bold"),
-                      cursor="hand2").pack(side="left", padx=(0, 20))
+            BotaoArredondado(cabecalho, "← Menu", self.criar_menu, tipo="cabecalho",
+                             largura=96, altura=36).pack(side="left", padx=(0, 20))
         self.titulo_label = tk.Label(cabecalho, text=titulo, bg=self.AZUL_ESCURO, fg="white",
                                      font=("Segoe UI", 17, "bold"))
         if voltar:
@@ -75,8 +300,13 @@ class JanelaPrincipal:
             self.titulo_label.configure(font=("Segoe UI", 35, "bold"))
             self.titulo_label.pack(fill="x")
         if subtitulo:
+            alinhamento = "center" if not voltar else "w"
+            justificativa = "center" if not voltar else "left"
             tk.Label(self.tela_atual, text=subtitulo, bg=self.FUNDO, fg=self.TEXTO,
-                     font=("Segoe UI", 10)).pack(anchor="w", padx=28, pady=(16, 4))
+                     font=("Segoe UI", 10), anchor=alinhamento,
+                     justify=justificativa).pack(
+                         anchor=alinhamento, padx=28, pady=(16, 4), fill="x"
+                     )
         self.conteudo = tk.Frame(self.tela_atual, bg=self.FUNDO, padx=28, pady=12)
         self.conteudo.pack(fill="both", expand=True)
         self.campos = {}
@@ -84,10 +314,9 @@ class JanelaPrincipal:
 
     def criar_menu(self):
         conteudo = self._nova_tela("GeoLine", "Sistema de construção e análise de retas.", voltar=False)
-        caixa = tk.Frame(conteudo, bg=self.FUNDO)
-        caixa.place(relx=0.5, rely=0.48, anchor="center", relwidth=0.72)
-        tk.Label(caixa, text="Menu principal", bg=self.FUNDO, fg=self.AZUL_ESCURO,
-                 font=("Segoe UI", 16, "bold")).pack(pady=(0, 20))
+        cartao = CartaoArredondado(conteudo, padding=22)
+        cartao.place(relx=0.5, rely=0.48, anchor="center", relwidth=0.72)
+        caixa = cartao.conteudo
         botoes = (
             ("Construir reta no R²", self.tela_reta_r2),
             ("Construir reta no R³", self.tela_reta_r3),
@@ -95,19 +324,20 @@ class JanelaPrincipal:
             ("Gráficos 2D / 3D", self.tela_graficos),
         )
         for texto, comando in botoes:
-            ttk.Button(caixa, text=texto, command=comando,
-                       style="Principal.TButton").pack(fill="x", pady=7)
+            BotaoArredondado(caixa, texto, comando, altura=48).pack(fill="x", pady=6)
 
     def criar_campos_entrada(self, pai, prefixo, dimensao, linha=0):
         """Adiciona um grupo de coordenadas e guarda os Entry pelo nome."""
-        grupo = ttk.LabelFrame(pai, text=prefixo, padding=10)
+        pai_interno = pai.conteudo if isinstance(pai, CartaoArredondado) else pai
+        grupo = CartaoArredondado(pai_interno, titulo=prefixo, padding=9)
         grupo.grid(row=linha, column=0, sticky="ew", pady=5)
         pai.columnconfigure(0, weight=1)
         simbolos = ("X", "Y", "Z")[:dimensao]
         campos = []
         for coluna, simbolo in enumerate(simbolos):
-            ttk.Label(grupo, text=simbolo).grid(row=0, column=coluna, sticky="w", padx=5)
-            entrada = ttk.Entry(grupo, width=18, font=("Segoe UI", 10))
+            ttk.Label(grupo.conteudo, text=simbolo, style="Card.TLabel").grid(
+                row=0, column=coluna, sticky="w", padx=5)
+            entrada = ttk.Entry(grupo.conteudo, width=18, font=("Segoe UI", 10))
             entrada.grid(row=1, column=coluna, sticky="ew", padx=5, pady=(3, 0))
             grupo.columnconfigure(coluna, weight=1)
             campos.append(entrada)
@@ -143,15 +373,20 @@ class JanelaPrincipal:
         conteudo = self._nova_tela(titulo, "Informe dois pontos distintos para definir a reta.")
         self.criar_campos_entrada(conteudo, "Reta — ponto inicial", dimensao)
         self.criar_campos_entrada(conteudo, "Reta — ponto final", dimensao, linha=1)
-        ttk.Button(conteudo, text="CALCULAR", style="Principal.TButton",
-                   command=lambda: self.calcular_reta(dimensao)).grid(row=2, column=0, sticky="ew", pady=12)
-        self.resultado = tk.Text(conteudo, height=8, wrap="word", font=("Consolas", 10),
-                                 relief="solid", bd=1, state="disabled")
-        self.resultado.grid(row=3, column=0, sticky="ew", pady=5)
+        BotaoArredondado(conteudo, "CALCULAR", lambda: self.calcular_reta(dimensao),
+                         altura=48).grid(row=2, column=0, sticky="ew", pady=12)
+        cartao_resultado = CartaoArredondado(conteudo, "Resultado", padding=10)
+        cartao_resultado.grid(row=3, column=0, sticky="nsew", pady=5)
+        self.resultado = tk.Text(cartao_resultado.conteudo, height=8, wrap="word",
+                                 font=("Consolas", 10), relief="flat", bd=0,
+                                 bg=self.BRANCO, fg=self.TEXTO, padx=8, pady=7,
+                                 state="disabled")
+        self.resultado.pack(fill="both", expand=True)
         self.criar_campos_entrada(conteudo, "Ponto para verificar", dimensao, linha=4)
-        ttk.Button(conteudo, text="VERIFICAR PERTENCIMENTO",
-                   command=lambda: self.verificar_pertencimento(dimensao)).grid(
-                       row=5, column=0, sticky="ew", pady=(4, 8))
+        BotaoArredondado(conteudo, "VERIFICAR PERTENCIMENTO",
+                         lambda: self.verificar_pertencimento(dimensao),
+                         tipo="secundario", altura=44).grid(
+                             row=5, column=0, sticky="ew", pady=(4, 8))
         conteudo.rowconfigure(3, weight=1)
 
     def tela_reta_r2(self):
@@ -209,11 +444,15 @@ class JanelaPrincipal:
         self.form_analisador = ttk.Frame(conteudo)
         self.form_analisador.grid(row=1, column=0, sticky="ew")
         self._atualizar_form_analisador()
-        ttk.Button(conteudo, text="ANALISAR RETAS", style="Principal.TButton",
-                   command=self.analisar_retas).grid(row=2, column=0, sticky="ew", pady=10)
-        self.resultado = tk.Text(conteudo, height=8, wrap="word", font=("Segoe UI", 10),
-                                 relief="solid", bd=1, state="disabled")
-        self.resultado.grid(row=3, column=0, sticky="nsew")
+        BotaoArredondado(conteudo, "ANALISAR RETAS", self.analisar_retas,
+                         altura=48).grid(row=2, column=0, sticky="ew", pady=10)
+        cartao_resultado = CartaoArredondado(conteudo, "Resultado da análise", padding=10)
+        cartao_resultado.grid(row=3, column=0, sticky="nsew", pady=(8, 0))
+        self.resultado = tk.Text(cartao_resultado.conteudo, height=8, wrap="word",
+                                 font=("Segoe UI", 10), relief="flat", bd=0,
+                                 bg=self.BRANCO, fg=self.TEXTO, padx=8, pady=7,
+                                 state="disabled")
+        self.resultado.pack(fill="both", expand=True)
         conteudo.rowconfigure(3, weight=1)
 
     def _atualizar_form_analisador(self):
@@ -222,7 +461,7 @@ class JanelaPrincipal:
         self.campos = {}
         dimensao = self.dimensao_analise.get()
         for indice, nome in enumerate(("Reta 1", "Reta 2")):
-            bloco = ttk.LabelFrame(self.form_analisador, text=nome, padding=7)
+            bloco = ttk.LabelFrame(self.form_analisador, text=nome, padding=10)
             bloco.grid(row=indice, column=0, sticky="ew", pady=4)
             bloco.columnconfigure(0, weight=1)
             self.criar_campos_entrada(bloco, f"{nome} — ponto inicial", dimensao, 0)
@@ -281,8 +520,9 @@ class JanelaPrincipal:
                             command=self._atualizar_form_graficos).pack(side="left", padx=5)
         self.form_graficos = ttk.Frame(conteudo)
         self.form_graficos.grid(row=1, column=0, sticky="ew")
-        self.grafico_container = tk.Frame(conteudo, bg="white")
-        self.grafico_container.grid(row=3, column=0, sticky="nsew", pady=(12, 0))
+        self.cartao_grafico = CartaoArredondado(conteudo, "Visualização", padding=8)
+        self.cartao_grafico.grid(row=3, column=0, sticky="nsew", pady=(12, 0))
+        self.grafico_container = self.cartao_grafico.conteudo
         conteudo.rowconfigure(3, weight=1)
         self._grafico_pagina = True
         self._atualizar_form_graficos()
@@ -338,7 +578,8 @@ class JanelaPrincipal:
         self.canvas_rolagem.update_idletasks()
         limites = self.canvas_rolagem.bbox("all")
         if limites and limites[3] > 0:
-            topo = self.grafico_container.winfo_y()
+            cartao = getattr(self, "cartao_grafico", self.grafico_container)
+            topo = cartao.winfo_y()
             self.canvas_rolagem.yview_moveto(min(topo / limites[3], 1.0))
 
     def _atualizar_form_graficos(self):
@@ -349,7 +590,7 @@ class JanelaPrincipal:
         dimensao = self.dimensao_grafico.get()
         for indice in range(self.quantidade_graficos.get()):
             nome = f"Reta {indice + 1}"
-            bloco = ttk.LabelFrame(self.form_graficos, text=nome, padding=7)
+            bloco = ttk.LabelFrame(self.form_graficos, text=nome, padding=10)
             bloco.grid(row=indice, column=0, sticky="ew", pady=4)
             bloco.columnconfigure(0, weight=1)
             self.criar_campos_entrada(bloco, f"{nome} — ponto inicial", dimensao, 0)
