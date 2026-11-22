@@ -1,2 +1,1 @@
-# O backend usa apenas a biblioteca padrão do Python.
-# Dependências visuais serão adicionadas quando gráficos e interface forem integrados.
+matplotlib>=3.7
