@@ -23,10 +23,11 @@ class Graficos:
     @staticmethod
     def _intervalo(reta):
         ponto = reta.ponto_inicial.coordenadas
-        direcao = reta.vetor_diretor.coordenadas
         escala = max(5.0, max((abs(valor) for valor in ponto), default=0.0) * 0.5)
         norma = reta.vetor_diretor.modulo()
-        return escala / norma
+        # O trecho é simétrico em torno de t=0 e precisa alcançar t=1,
+        # que corresponde ao segundo ponto informado na construção da reta.
+        return max(1.0, escala / norma)
 
     @classmethod
     def _desenhar_r2(cls, retas):
@@ -42,11 +43,14 @@ class Graficos:
             nome = f"Reta {indice + 1}" if len(retas) == 2 else "Reta"
             cor = cores[indice]
             ax.plot(xs, ys, color=cor, linewidth=2, label=nome)
-            ax.scatter([x0], [y0], color=cor, edgecolors="white", zorder=3,
-                       label=f"Ponto inicial {indice + 1}" if len(retas) == 2 else "Ponto inicial")
+            ax.scatter([x0], [y0], color=cor, edgecolors="white", zorder=3)
             final = reta.obter_ponto(1).coordenadas
-            ax.scatter([final[0]], [final[1]], color=cor, marker="D", edgecolors="white", zorder=3,
-                       label=f"Ponto final {indice + 1}" if len(retas) == 2 else "Ponto final")
+            ax.scatter([final[0]], [final[1]], color=cor, marker="D", edgecolors="white", zorder=3)
+            nomes_pontos = (("P₁", "P₂"), ("Q₁", "Q₂"))[indice]
+            ax.annotate(nomes_pontos[0], (x0, y0), xytext=(5, 5),
+                        textcoords="offset points", fontsize=8)
+            ax.annotate(nomes_pontos[1], final, xytext=(5, 5),
+                        textcoords="offset points", fontsize=8)
         ax.axhline(0, color="#687386", linewidth=0.8)
         ax.axvline(0, color="#687386", linewidth=0.8)
         ax.set_xlabel("X")
@@ -54,7 +58,7 @@ class Graficos:
         ax.set_title("Retas no R²")
         ax.grid(True, linestyle=":", alpha=0.6)
         ax.set_aspect("equal", adjustable="datalim")
-        ax.legend()
+        ax.legend(loc="upper left", framealpha=0.9)
         fig.tight_layout()
         return fig, ax
 
@@ -74,16 +78,22 @@ class Graficos:
             nome = f"Reta {indice + 1}" if len(retas) == 2 else "Reta"
             cor = cores[indice]
             ax.plot(*coordenadas, color=cor, linewidth=2, label=nome)
-            ax.scatter(*ponto, color=cor, edgecolors="white", s=35,
-                       label=f"Ponto inicial {indice + 1}" if len(retas) == 2 else "Ponto inicial")
+            ax.scatter(*ponto, color=cor, edgecolors="white", s=35)
             ponto_final = reta.obter_ponto(1).coordenadas
-            ax.scatter(*ponto_final, color=cor, marker="D", edgecolors="white", s=35,
-                       label=f"Ponto final {indice + 1}" if len(retas) == 2 else "Ponto final")
+            ax.scatter(*ponto_final, color=cor, marker="D", edgecolors="white", s=35)
+            nomes_pontos = (("P₁", "P₂"), ("Q₁", "Q₂"))[indice]
+            ax.text(*ponto, nomes_pontos[0], fontsize=8)
+            ax.text(*ponto_final, nomes_pontos[1], fontsize=8)
         ax.set_xlabel("X")
         ax.set_ylabel("Y")
         ax.set_zlabel("Z")
         ax.set_title("Retas no R³")
-        ax.legend()
+        ax.legend(loc="upper left", framealpha=0.9)
+        limites = (ax.get_xlim3d(), ax.get_ylim3d(), ax.get_zlim3d())
+        proporcoes = [abs(limite[1] - limite[0]) for limite in limites]
+        referencia = max(proporcoes, default=1.0)
+        proporcoes = [valor if valor > 0 else referencia * 0.05 for valor in proporcoes]
+        ax.set_box_aspect(proporcoes)
         fig.tight_layout()
         return fig, ax
 
