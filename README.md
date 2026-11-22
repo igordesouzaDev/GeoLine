@@ -2,16 +2,23 @@
 
 Projeto acadêmico em Python para construção e análise de retas no R² e no R³.
 
-## Etapa atual
+## Aplicação
 
-Esta etapa integra o backend matemático: `Vetor`, `Reta`, `RetaR2`, `RetaR3` e `Analisador`. O backend usa somente a biblioteca padrão do Python.
+O projeto reúne o backend matemático (`Vetor`, `Reta`, `RetaR2`, `RetaR3` e `Analisador`), uma interface Tkinter e gráficos Matplotlib. A aplicação permite construir retas no R² e R³, analisar a relação entre duas retas e exibir gráficos 2D/3D.
 
-A interface Tkinter e o módulo de gráficos estão sendo desenvolvidos independentemente e **ainda não foram integrados** ao backend. O arquivo `main.py` é apenas um ponto de entrada inicial e imprime o nome do projeto; ele ainda não inicia uma aplicação completa.
+## Instalação e execução
+
+Requer Python 3.10 ou superior. Na raiz do repositório, instale a dependência visual e inicie a aplicação:
+
+```bash
+python -m pip install -r requirements.txt
+python main.py
+```
 
 ## Requisitos
 
 - Python 3.10 ou superior.
-- Nenhuma dependência externa para executar o backend e seus testes.
+- Matplotlib para os gráficos e sua incorporação à interface. O backend matemático continua usando apenas a biblioteca padrão.
 
 ## Testes automatizados
 
@@ -47,10 +54,10 @@ GeoLine/
 ├── tests/                 # testes automatizados do backend
 ├── scripts/               # exemplos e menus interativos
 │   └── menu_terminal.py   # menu integrado para testar o backend
-├── interface/             # em desenvolvimento independente
-├── visualizacao/          # gráficos em desenvolvimento independente
+├── interface/             # janela e telas Tkinter
+├── visualizacao/           # geração de figuras Matplotlib
 ├── executar_menu.py       # execução do menu pelo terminal
-├── main.py                # ponto de entrada inicial
+├── main.py                # inicializa a interface gráfica
 ├── requirements.txt
 ├── .gitignore
 └── CONTRATO.md
@@ -58,6 +65,6 @@ GeoLine/
 
 Consulte [CONTRATO.md](CONTRATO.md) para o contrato entre as classes.
 
-## Próximas etapas
+## Observações
 
-Depois que os responsáveis concluírem as telas e os gráficos, esses módulos poderão ser integrados ao backend e ao fluxo principal da aplicação.
+Os testes automatizados do backend continuam independentes da interface. Os gráficos são criados como figuras Matplotlib e exibidos dentro da janela principal.
