@@ -39,11 +39,25 @@ class JanelaPrincipal:
                               foreground=self.AZUL_ESCURO, font=("Segoe UI", 10, "bold"))
         self.tela_atual = None
         self.campos = {}
+        self.resultado = None
+        self.grafico_container = None
+        self.grafico_figura = None
+        self.grafico_canvas = None
+        self.grafico_toolbar = None
+        self._grafico_pagina = False
         self.criar_menu()
 
     def _nova_tela(self, titulo, subtitulo=None, voltar=True):
         if self.tela_atual is not None:
+            if self._grafico_pagina:
+                self._limpar_grafico(mensagem=None)
+                self.root.unbind_all("<MouseWheel>")
+                self.root.unbind_all("<Button-4>")
+                self.root.unbind_all("<Button-5>")
+                self._grafico_pagina = False
+                self.grafico_container = None
             self.tela_atual.destroy()
+            self.resultado = None
         self.tela_atual = tk.Frame(self.root, bg=self.FUNDO)
         self.tela_atual.pack(fill="both", expand=True)
         cabecalho = tk.Frame(self.tela_atual, bg=self.AZUL_ESCURO, padx=24, pady=18)
@@ -153,6 +167,7 @@ class JanelaPrincipal:
         self.resultado.configure(state="disabled")
 
     def calcular_reta(self, dimensao=None):
+        self._limpar_resultados()
         try:
             if dimensao is None:
                 dimensao = 2 if len(self.campos.get("Reta — ponto inicial", [])) == 2 else 3
@@ -215,6 +230,7 @@ class JanelaPrincipal:
         self.form_analisador.columnconfigure(0, weight=1)
 
     def analisar_retas(self):
+        self._limpar_resultados()
         try:
             dimensao = self.dimensao_analise.get()
             reta1 = self._construir_reta(dimensao, "Reta 1")
@@ -228,12 +244,29 @@ class JanelaPrincipal:
             ponto = resultado["ponto_intersecao"]
             linhas.append(f"Ponto de interseção: {ponto}" if ponto is not None
                           else "Ponto de interseção: não há ponto único.")
+            if dimensao == 3:
+                produto_escalar = reta1.vetor_diretor.produto_escalar(reta2.vetor_diretor)
+                ortogonais = reta1.eh_ortogonal(reta2)
+                angulo = reta1.angulo_com(reta2)
+                distancia = reta1.distancia_reta(reta2)
+                linhas.extend((
+                    f"Produto escalar dos vetores diretores: {self._formatar_numero_exibicao(produto_escalar)}",
+                    f"Ortogonalidade: {'Sim' if ortogonais else 'Não'}",
+                    f"Ângulo entre as retas: {self._formatar_numero_exibicao(angulo)}°",
+                    f"Distância entre as retas: {self._formatar_numero_exibicao(distancia)}",
+                ))
             self.exibir_resultados("\n".join(linhas))
         except (TypeError, ValueError, OverflowError) as erro:
             messagebox.showerror("Não foi possível analisar as retas", str(erro), parent=self.root)
 
     def tela_graficos(self):
-        conteudo = self._nova_tela("Gráficos 2D / 3D", "Escolha a dimensão, a quantidade de retas e informe os pontos.")
+        conteudo = self._nova_tela(
+            "Gráficos 2D / 3D",
+            "Escolha a dimensão, a quantidade de retas e informe os pontos.",
+        )
+        conteudo.destroy()
+        self._criar_area_rolavel()
+        conteudo = self.conteudo
         opcoes = ttk.Frame(conteudo)
         opcoes.grid(row=0, column=0, sticky="w", pady=(0, 8))
         self.dimensao_grafico = tk.IntVar(value=2)
@@ -251,9 +284,65 @@ class JanelaPrincipal:
         self.grafico_container = tk.Frame(conteudo, bg="white")
         self.grafico_container.grid(row=3, column=0, sticky="nsew", pady=(12, 0))
         conteudo.rowconfigure(3, weight=1)
+        self._grafico_pagina = True
         self._atualizar_form_graficos()
 
+    def _criar_area_rolavel(self):
+        """Substitui a área do conteúdo por um painel vertical rolável."""
+        area = tk.Frame(self.tela_atual, bg=self.FUNDO)
+        area.pack(fill="both", expand=True)
+        self.canvas_rolagem = tk.Canvas(
+            area, bg=self.FUNDO, highlightthickness=0, yscrollincrement=24
+        )
+        barra = ttk.Scrollbar(area, orient="vertical", command=self.canvas_rolagem.yview)
+        self.canvas_rolagem.configure(yscrollcommand=barra.set)
+        self.canvas_rolagem.pack(side="left", fill="both", expand=True)
+        barra.pack(side="right", fill="y")
+        self.conteudo = tk.Frame(self.canvas_rolagem, bg=self.FUNDO, padx=28, pady=12)
+        self._janela_conteudo = self.canvas_rolagem.create_window(
+            (0, 0), window=self.conteudo, anchor="nw"
+        )
+        self.conteudo.bind(
+            "<Configure>",
+            lambda _evento: self.canvas_rolagem.configure(
+                scrollregion=self.canvas_rolagem.bbox("all")
+            ),
+        )
+        self.canvas_rolagem.bind(
+            "<Configure>",
+            lambda evento: self.canvas_rolagem.itemconfigure(
+                self._janela_conteudo, width=evento.width
+            ),
+        )
+        self.root.bind_all("<MouseWheel>", self._rolar_com_mouse)
+        self.root.bind_all("<Button-4>", self._rolar_com_mouse)
+        self.root.bind_all("<Button-5>", self._rolar_com_mouse)
+        self._rolagem_ativa = True
+
+    def _rolar_com_mouse(self, evento):
+        if getattr(evento, "num", None) == 4:
+            unidades = -1
+        elif getattr(evento, "num", None) == 5:
+            unidades = 1
+        else:
+            unidades = -int(evento.delta / 120)
+            if evento.delta and unidades == 0:
+                unidades = -1 if evento.delta > 0 else 1
+        if unidades:
+            self.canvas_rolagem.yview_scroll(unidades, "units")
+        return "break"
+
+    def _rolar_para_grafico(self):
+        if not self._grafico_pagina or self.grafico_container is None:
+            return
+        self.canvas_rolagem.update_idletasks()
+        limites = self.canvas_rolagem.bbox("all")
+        if limites and limites[3] > 0:
+            topo = self.grafico_container.winfo_y()
+            self.canvas_rolagem.yview_moveto(min(topo / limites[3], 1.0))
+
     def _atualizar_form_graficos(self):
+        self._limpar_grafico()
         for filho in self.form_graficos.winfo_children():
             filho.destroy()
         self.campos = {}
@@ -270,7 +359,40 @@ class JanelaPrincipal:
                    command=self.exibir_grafico).grid(row=self.quantidade_graficos.get(), column=0,
                                                      sticky="ew", pady=8)
 
+    def _limpar_grafico(self, mensagem="A figura será exibida aqui após gerar o gráfico."):
+        """Destrói canvas e barra existentes e libera os dados da figura anterior."""
+        if self.grafico_container is None:
+            return
+        if self.grafico_figura is not None:
+            try:
+                self.grafico_figura.clear()
+            except tk.TclError:
+                # A barra pode já ter perdido a janela Tcl durante uma falha de renderização.
+                pass
+        for filho in self.grafico_container.winfo_children():
+            try:
+                filho.destroy()
+            except tk.TclError:
+                pass
+        self.grafico_figura = None
+        self.grafico_canvas = None
+        self.grafico_toolbar = None
+        if mensagem:
+            tk.Label(self.grafico_container, text=mensagem, bg="white",
+                     fg=self.TEXTO, font=("Segoe UI", 10)).pack(
+                         fill="both", expand=True, padx=10, pady=24
+                     )
+
+    @staticmethod
+    def _formatar_numero_exibicao(valor):
+        return f"{valor:.6g}"
+
+    def _limpar_resultados(self):
+        if self.resultado is not None and self.resultado.winfo_exists():
+            self.exibir_resultados("")
+
     def exibir_grafico(self):
+        self._limpar_grafico("Preparando o gráfico...")
         try:
             from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
             from visualizacao.graficos import Graficos
@@ -285,15 +407,19 @@ class JanelaPrincipal:
             else:
                 figura, _ = (Graficos.plotar_reta_r3(retas[0]) if quantidade == 1
                              else Graficos.plotar_duas_retas_r3(*retas))
-            for filho in self.grafico_container.winfo_children():
-                filho.destroy()
-            canvas = FigureCanvasTkAgg(figura, master=self.grafico_container)
-            canvas.draw()
-            barra = NavigationToolbar2Tk(canvas, self.grafico_container, pack_toolbar=False)
-            barra.update()
-            barra.pack(side="bottom", fill="x")
-            canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
-        except (ImportError, TypeError, ValueError, OverflowError) as erro:
+            self._limpar_grafico(mensagem=None)
+            self.grafico_figura = figura
+            self.grafico_canvas = FigureCanvasTkAgg(figura, master=self.grafico_container)
+            self.grafico_canvas.draw()
+            self.grafico_toolbar = NavigationToolbar2Tk(
+                self.grafico_canvas, self.grafico_container, pack_toolbar=False
+            )
+            self.grafico_toolbar.update()
+            self.grafico_toolbar.pack(side="bottom", fill="x")
+            self.grafico_canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
+            self.root.after_idle(self._rolar_para_grafico)
+        except (ImportError, TypeError, ValueError, OverflowError, RuntimeError, tk.TclError) as erro:
+            self._limpar_grafico("Não foi possível gerar. Corrija os dados e tente novamente.")
             messagebox.showerror("Não foi possível gerar o gráfico", str(erro), parent=self.root)
 
     def iniciar(self):
