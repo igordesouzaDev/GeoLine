@@ -1,8 +1,10 @@
+"""Ponto de entrada da aplicação gráfica GeoLine."""
+
+from interface import JanelaPrincipal
+
+
 def main():
-    print("================================")
-    print("          GEOLINE")
-    print(" Sistema de Equações de Retas")
-    print("================================")
+    JanelaPrincipal().iniciar()
 
 
 if __name__ == "__main__":
